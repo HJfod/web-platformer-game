@@ -16,16 +16,14 @@ Anyone can play maps without needing to log in. Users with an account can also c
 
 ## :zap: Running a local copy
 
-> :zap: **Quick Instructions**: Needs **Node JS** and **Python** with **Flask** installed. Use `npm run dev` to run the app in development mode.
+> :zap: **Quick Instructions**: Needs **Python** with **Flask** installed. Use `python -m flask --app src/app.py run` to run the app in development mode.
 
 These are the instructions for running a **local server** of the game. This means that the game connects to a **local database**, so all maps and reviews are stored only on your local computer.
 
-1. Install [Node JS](https://nodejs.org/en) and [Python](https://www.python.org/downloads/).
+1. Install [Python](https://www.python.org/downloads/).
 
-2. Clone the repository via Git.
+2. After getting Python, install the **Flask** web development framework by running `pip install flask`.
 
-3. After getting Python, install the **Flask** web development framework by running `pip install flask`.
+3. Clone the repository via Git.
 
-4. Install the JS dependencies by navigating to the project folder and running `npm i`.
-
-5. You can then run a local server by running `npm run dev`. This starts a new web server at [http://127.0.0.1:5000] by default.
+4. You can then run a local server by running `python -m flask --app src/app.py run`. This starts a new web server at [http://127.0.0.1:5000] by default.

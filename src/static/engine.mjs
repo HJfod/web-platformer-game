@@ -1,28 +1,48 @@
 
+// @ts-check
+
 const GRID_SIZE = 32;
 
-function clamp(num: number, min: number, max: number): number {
+/**
+ * Clamp a value to be between min and max
+ * @param {number} num 
+ * @param {number} min 
+ * @param {number} max 
+ * @returns number
+ */
+function clamp(num, min, max) {
     return Math.min(Math.max(num, min), max);
 }
 
-interface GridPoint {
-    x: number;
-    y: number;
-}
+/**
+ * @typedef {{ x: number, y: number }} GridPoint
+ * @typedef {{ x: number, y: number }} Vec2
+ */
 
-interface Vec2 {
-    x: number;
-    y: number;
-}
-
+/**
+ * An object hitbox, potentially rotated
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ * @property {number} angle
+ */
 class Hitbox {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    angle: number;
+    x;
+    y;
+    width;
+    height;
+    angle;
 
-    constructor(x: number, y: number, width: number, height: number, angle: number) {
+    /**
+     * Construct a new hitbox
+     * @param {number} x 
+     * @param {number} y 
+     * @param {number} width 
+     * @param {number} height 
+     * @param {number} angle 
+     */
+    constructor(x, y, width, height, angle) {
         this.x = x;
         this.y = y;
         this.width = width;
@@ -30,22 +50,22 @@ class Hitbox {
         this.angle = angle;
     }
 
-    left(): number {
+    left() {
         return this.x;
     }
-    right(): number {
+    right() {
         return this.x + this.width;
     }
-    top(): number {
+    top() {
         return this.y + this.height;
     }
-    bottom(): number {
+    bottom() {
         return this.y;
     }
-    midY(): number {
+    midY() {
         return this.y + this.height / 2;
     }
-    midX(): number {
+    midX() {
         return this.x + this.width / 2;
     }
 }
@@ -70,47 +90,81 @@ document.addEventListener('keyup', e => {
     }
 });
 
-type ObjectType = 'block' | 'spike' | 'player' | 'particles';
-type ObjectCollision = 'deco' | 'solid' | 'deadly';
+/**
+ * @typedef {'block' | 'spike' | 'player' | 'particles'} ObjectType
+ * @typedef {'deco' | 'solid' | 'deadly'} ObjectCollision
+ * @typedef {{ tick(delta: number): void, render(ctx: CanvasRenderingContext2D): void }} Renderable
+ */
 
-interface Renderable {
-    tick(delta: number): void;
-    render(ctx: CanvasRenderingContext2D): void;
-}
-
-abstract class GameObject implements Renderable {
-    type: ObjectType;
-    gridPosition: GridPoint;
-    x: number;
-    y: number;
-    rotation: number;
-    children: GameObject[] = [];
-    level: Level | undefined;
-    collision: ObjectCollision = 'deco';
-
-    constructor(type: ObjectType, level: Level, x: number = 0, y: number = 0) {
+/**
+ * An object within a level
+ * @abstract
+ * @implements {Renderable}
+ */
+class GameObject {
+    /**
+     * Construct a new GameObject
+     * @param {ObjectType} type 
+     * @param {Level} level 
+     * @param {number} x 
+     * @param {number} y 
+     */
+    constructor(type, level, x = 0, y = 0) {
+        /**
+         * @type {ObjectType}
+         */
         this.type = type;
+        /**
+         * @type {Level | undefined}
+         */
         this.level = level;
+        /**
+         * @type {GridPoint}
+         */
         this.gridPosition = { x: x / GRID_SIZE, y: y / GRID_SIZE };
+        /**
+         * @type {number}
+         */
         this.x = x;
+        /**
+         * @type {number}
+         */
         this.y = y;
+        /**
+         * @type {number}
+         */
         this.rotation = 0;
+        /**
+         * @type {GameObject[]}
+         */
+        this.children = [];
+        /**
+         * @type {ObjectCollision}
+         */
+        this.collision = 'deco';
 
         this.init();
 
         level.objects.push(this);
     }
 
-    abstract init(): void;
+    /**
+     * Initialize this GameObject
+     */
+    init() {}
     
-    removeThis(): void {
+    removeThis() {
         if (this.level) {
             this.level.objects = this.level.objects.filter(obj => obj !== this);
             this.level = undefined;
         }
     }
 
-    abshitbox(): Hitbox | undefined {
+    /**
+     * Get the hitbox translated to world coordinates
+     * @returns {Hitbox | undefined}
+     */
+    abshitbox() {
         const box = this.hitbox();
         if (box) {
             box.x += this.x;
@@ -119,27 +173,60 @@ abstract class GameObject implements Renderable {
         }
         return undefined;
     }
-    abstract hitbox(): Hitbox | undefined;
-    abstract tick(delta: number): void;
-    abstract render(ctx: CanvasRenderingContext2D): void;
+
+    /**
+     * Get the hitbox of the object. By default the object has no hitbox 
+     * (represented by `undefined`)
+     * @returns {Hitbox | undefined}
+     */
+    hitbox() {
+        return undefined;
+    }
+    /**
+     * Tick the physics of the object. The object should use `delta` to 
+     * calculate how much time has passed between `tick()` calls to ensure 
+     * physics are consistent across framerates
+     * @type {Renderable['tick']}
+     */
+    tick(delta) {}
+    /**
+     * Tick the physics of the object. The object should use `delta` to 
+     * calculate how much time has passed between `tick()` calls to ensure 
+     * physics are consistent across framerates
+     * @type {Renderable['render']}
+     */
+    render(ctx) {}
 }
 
-type Particle = {
-    x: number,
-    y: number,
-    speed: Vec2,
-    angle: number,
-    angleSpeed: number,
-    life: number,
-};
+/**
+ * @typedef {{ x: number, y: number, speed: Vec2, angle: number, angleSpeed: number, life: number }} Particle
+ */
 
+/**
+ * An object that generates particles. The object is automatically removed once 
+ * the particle animation is finished
+ */
 class ParticleObject extends GameObject {
-    color: string;
-    particles: Particle[] = [];
-
-    constructor(level: Level, count: number, life: number, color: string, x: number, y: number) {
+    /**
+     * Construct a new particle generator object
+     * @param {Level} level 
+     * @param {number} count 
+     * @param {number} life 
+     * @param {string} color 
+     * @param {number} x 
+     * @param {number} y 
+     */
+    constructor(level, count, life, color, x, y) {
         super('particles', level, x, y);
+
+        /**
+         * @type {string}
+         */
         this.color = color;
+        /**
+         * @type {Particle[]}
+         */
+        this.particles = [];
 
         console.log(`${this.x}, ${this.y}`);
 
@@ -154,11 +241,16 @@ class ParticleObject extends GameObject {
         }
     }
 
-    init(): void {}
-    hitbox(): Hitbox | undefined {
+    /** @type {GameObject['init']} */
+    init() {}
+
+    /** @type {GameObject['hitbox']} */
+    hitbox() {
         return undefined;
     }
-    tick(delta: number): void {
+    
+    /** @type {GameObject['tick']} */
+    tick(delta) {
         this.particles.forEach(p => {
             p.speed.y -= 0.1 * delta;
             p.x += p.speed.x;
@@ -171,7 +263,9 @@ class ParticleObject extends GameObject {
             this.removeThis();
         }
     }
-    render(ctx: CanvasRenderingContext2D): void {
+
+    /** @type {GameObject['render']} */
+    render(ctx) {
         this.particles.forEach(p => {
             ctx.save();
     
@@ -187,15 +281,21 @@ class ParticleObject extends GameObject {
     }
 }
 
+/**
+ * A standard block object. Looks like a rectangle, hits like a rectangle
+ */
 class BlockObject extends GameObject {
-    init(): void {
+    /** @type {GameObject['init']} */
+    init() {
         this.collision = 'solid';
     }
-    hitbox(): Hitbox | undefined {
+    /** @type {GameObject['hitbox']} */
+    hitbox() {
         return new Hitbox(0, 0, GRID_SIZE, GRID_SIZE, this.rotation);
     }
-    tick(delta: number): void {}
-    render(ctx: CanvasRenderingContext2D): void {
+
+    /** @type {GameObject['render']} */
+    render(ctx) {
         ctx.save();
 
         ctx.translate(this.x + GRID_SIZE / 2, this.y + GRID_SIZE / 2);
@@ -217,16 +317,22 @@ class BlockObject extends GameObject {
     }
 }
 
+/**
+ * A standard spike object. Kills the player when touched
+ */
 class SpikeObject extends GameObject {
-    init(): void {
+    /** @type {GameObject['init']} */
+    init() {
         this.collision = 'deadly';
     }
 
-    hitbox(): Hitbox | undefined {
+    /** @type {GameObject['hitbox']} */
+    hitbox() {
         return new Hitbox(GRID_SIZE / 4, 0, GRID_SIZE / 2, GRID_SIZE / 2, this.rotation);
     }
-    tick(delta: number): void {}
-    render(ctx: CanvasRenderingContext2D): void {
+    
+    /** @type {GameObject['render']} */
+    render(ctx) {
         ctx.save();
 
         ctx.translate(this.x + GRID_SIZE / 2, this.y + GRID_SIZE / 2);
@@ -250,33 +356,65 @@ class SpikeObject extends GameObject {
     }
 }
 
+/**
+ * The player
+ */
 class PlayerObject extends GameObject {
-    speed: Vec2 = { x: 0, y: 0 };
-    acc: Vec2 = { x: 0, y: 0 };
-    squish: Vec2 = { x: 0, y: 0 };
-    collidingBlockBelow: number | undefined;
-    collidingBlockRight: number | undefined;
-    collidingBlockLeft:  number | undefined;
-    collidingBlockAbove: number | undefined;
-
-    constructor(level: Level, x: number, y: number) {
+    /**
+     * Construct a new player
+     * @param {Level} level 
+     * @param {number} x 
+     * @param {number} y 
+     */
+    constructor(level, x, y) {
         super('player', level, x, y);
+        /**
+         * @type {Vec2}
+         */
+        this.speed = { x: 0, y: 0 };
+        /**
+         * @type {Vec2}
+         */
+        this.acc = { x: 0, y: 0 };
+        /**
+         * @type {Vec2}
+         */
+        this.squish = { x: 0, y: 0 };
+        /**
+         * @type {number | undefined}
+         */
+        this.collidingBlockAbove = undefined;
+        /**
+         * @type {number | undefined}
+         */
+        this.collidingBlockBelow = undefined;
+        /**
+         * @type {number | undefined}
+         */
+        this.collidingBlockLeft = undefined;
+        /**
+         * @type {number | undefined}
+         */
+        this.collidingBlockRight = undefined;
     }
 
-    init(): void {}
-
     checkCollisions() {
+        // Make sure we are in a level
+        const level = this.level;
+        if (!level) return;
+
         this.collidingBlockAbove = undefined;
         this.collidingBlockBelow = undefined;
         this.collidingBlockLeft = undefined;
         this.collidingBlockRight = undefined;
 
-        const player = this.abshitbox()!;
+        // The player will always have a hitbox
+        const player = /** @type {Hitbox} */ (this.abshitbox());
 
         const OBJ_HITBOX_SIZE = 8;
 
         // Check all objects (no way there would be so many that this would be laggy haha)
-        for (const obj_ of this.level!.objects) {
+        for (const obj_ of level.objects) {
             if (obj_.type === 'player') continue;
             
             const obj = obj_.abshitbox();
@@ -311,22 +449,24 @@ class PlayerObject extends GameObject {
         }
 
         // Check level borders
-        if (player.top() > this.level!.height - GRID_SIZE) {
-            this.collidingBlockAbove = this.level!.height - GRID_SIZE;
+        if (player.top() > level.height - GRID_SIZE) {
+            this.collidingBlockAbove = level.height - GRID_SIZE;
         }
         if (player.bottom() < GRID_SIZE) {
             this.collidingBlockBelow = GRID_SIZE;
         }
-        if (player.right() > this.level!.width - GRID_SIZE) {
-            this.collidingBlockRight = this.level!.width - GRID_SIZE;
+        if (player.right() > level.width - GRID_SIZE) {
+            this.collidingBlockRight = level.width - GRID_SIZE;
         }
         if (player.left() < GRID_SIZE) {
             this.collidingBlockLeft = GRID_SIZE;
         }
     }
 
-    kill(): void {
-        new ParticleObject(this.level!, 15, 60, "#f07", this.x, this.y);
+    kill() {
+        if (this.level) {
+            new ParticleObject(this.level, 15, 60, "#f07", this.x, this.y);
+        }
         
         this.acc.x = 0;
         this.acc.y = 0;
@@ -340,10 +480,13 @@ class PlayerObject extends GameObject {
         this.level?.reset();
     }
 
-    hitbox(): Hitbox | undefined {
+    /** @type {GameObject['hitbox']} */
+    hitbox() {
         return new Hitbox(0, 0, GRID_SIZE, GRID_SIZE, this.rotation);
     }
-    tick(delta: number): void {
+
+    /** @type {GameObject['tick']} */
+    tick(delta) {
         if (!this.level) return;
 
         this.checkCollisions();
@@ -443,7 +586,9 @@ class PlayerObject extends GameObject {
             this.rotation -= this.speed.x / 40 * delta;
         }
     }
-    render(ctx: CanvasRenderingContext2D): void {
+
+    /** @type {GameObject['render']} */
+    render(ctx) {
         ctx.save();
 
         if (this.squish.y < this.speed.y) {
@@ -479,32 +624,51 @@ class PlayerObject extends GameObject {
     }
 }
 
-interface LevelDataObject {
-    x: number;
-    y: number;
-    type: ObjectType;
-}
+/**
+ * @typedef {{ x: number, y: number, type: ObjectType }} LevelDataObject
+ * @typedef {{ playerX: number, playerY: number, objects: LevelDataObject[] }} LevelData
+ */
 
-interface LevelData {
-    playerX: number,
-    playerY: number,
-    objects: LevelDataObject[];
-}
-
-class Level implements Renderable {
-    width: number;
-    height: number;
-    objects: GameObject[] = [];
-    player: PlayerObject | undefined;
-    data: LevelData | undefined;
-
-    constructor(data: LevelData, canvas: HTMLCanvasElement) {
+/**
+ * A game level
+ * @implements {Renderable}
+ */
+class Level {
+    /**
+     * Load a new level from data into a canvas
+     * @param {LevelData} data 
+     * @param {HTMLCanvasElement} canvas 
+     */
+    constructor(data, canvas) {
+        /**
+         * @type {number}
+         */
         this.width = canvas.width;
+        /**
+         * @type {number}
+         */
         this.height = canvas.height;
+        /**
+         * @type {GameObject[]}
+         */
+        this.objects = [];
+        /**
+         * @type {PlayerObject | undefined}
+         */
+        this.player = undefined;
+        /**
+         * @type {LevelData | undefined}
+         */
+        this.data = undefined;
+
         this.loadLevel(data);
     }
 
-    loadLevel(data: LevelData) {
+    /**
+     * Load level data
+     * @param {LevelData} data 
+     */
+    loadLevel(data) {
         this.objects.forEach(obj => obj.level = undefined);
         this.objects = [];
         this.player = undefined;
@@ -529,15 +693,19 @@ class Level implements Renderable {
         });
     }
 
-    reset(): void {
-        this.player!.x = this.data!.playerX * GRID_SIZE;
-        this.player!.y = this.data!.playerY * GRID_SIZE;
+    reset() {
+        if (this.player && this.data) {
+            this.player.x = this.data.playerX * GRID_SIZE;
+            this.player.y = this.data.playerY * GRID_SIZE;
+        }
     }
 
-    tick(delta: number): void {
+    /** @type {Renderable['tick']} */
+    tick(delta) {
         this.objects.forEach(obj => obj.tick(delta));
     }
-    render(ctx: CanvasRenderingContext2D): void {
+    /** @type {Renderable['render']} */
+    render(ctx) {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, this.width, GRID_SIZE);
         ctx.fillRect(0, this.height - GRID_SIZE, this.width, GRID_SIZE);
@@ -548,17 +716,25 @@ class Level implements Renderable {
     }
 }
 
-let runningAnimationFrameFunc: number | undefined = undefined;
-function setGlobalRenderObject(canvas: HTMLCanvasElement, obj: Renderable) {
+/** @type {number | undefined} */
+let runningAnimationFrameFunc = undefined;
+
+/**
+ * Set the rendering source for a canvas. This begins calls to `tick` and 
+ * `render` every frame 
+ * @param {HTMLCanvasElement} canvas 
+ * @param {Renderable} obj 
+ */
+function setGlobalRenderObject(canvas, obj) {
     if (runningAnimationFrameFunc) {
         cancelAnimationFrame(runningAnimationFrameFunc);
     }
 
-    const ctx = canvas.getContext('2d')!;
+    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     ctx.setTransform(1, 0, 0, -1, 0, canvas.height - 1);
 
     let prevFrame = 0;
-    const schedule = (frameStamp: number) => {
+    const schedule = (/** @type {number} */ frameStamp) => {
         const delta = (frameStamp - prevFrame) * 60 / 1000;
 
         // Physics run at a constant tick rate
@@ -574,11 +750,20 @@ function setGlobalRenderObject(canvas: HTMLCanvasElement, obj: Renderable) {
     requestAnimationFrame(schedule);
 }
 
-export function loadLevel(canvas: HTMLCanvasElement, data: LevelData) {
+/**
+ * Load a new level into a canvas, replacing any existing level
+ * @param {HTMLCanvasElement} canvas 
+ * @param {LevelData} data 
+ */
+export function loadLevel(canvas, data) {
     setGlobalRenderObject(canvas, new Level(data, canvas));
 }
 
-export function loadTestLevel(canvas: HTMLCanvasElement) {
+/**
+ * Load the built-in test level into a canvas, replacing any existing level
+ * @param {HTMLCanvasElement} canvas 
+ */
+export function loadTestLevel(canvas) {
     return loadLevel(canvas, {
         playerX: 3,
         playerY: 10,
