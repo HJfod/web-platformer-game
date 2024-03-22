@@ -1,0 +1,11 @@
+{
+  "name": "platformer-game",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node run.mjs dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.2"
+  }
+}

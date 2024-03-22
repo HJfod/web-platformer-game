@@ -1,0 +1,18 @@
+
+{% extends "layouts/base.html.j2" %}
+
+{% set title = "Play level (" ~ level_id ~ ")" %}
+{% set styles = ['level.css'] %}
+
+{% block body %}
+    <main>
+        <canvas width="768" height="768" style="background: #aaa;"></canvas>
+    </main>
+
+    <script type="module">
+        import { loadTestLevel } from "{{ url_for('static', filename='engine.mjs') }}";
+
+        const canvas = document.querySelector('canvas');
+        loadTestLevel(canvas);
+    </script>
+{% endblock %}
