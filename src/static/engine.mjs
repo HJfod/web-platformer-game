@@ -1,4 +1,3 @@
-
 // @ts-check
 
 const GRID_SIZE = 32;
