@@ -26,4 +26,6 @@ These are the instructions for running a **local server** of the game. This mean
 
 3. Clone the repository via Git.
 
-4. You can then run a local server by running `python -m flask --app src/app.py run`. This starts a new web server at [http://127.0.0.1:5000] by default.
+4. Make sure your Postgres service is running. Initialize the Postgres database by running `postgres -U <your_user_name> -f sql/setup.sql`.
+
+5. You can then run a local server by running `python -m flask --app src/app.py run --debug`. This starts a new web server at [http://127.0.0.1:5000] by default.

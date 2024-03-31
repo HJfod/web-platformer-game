@@ -10,9 +10,9 @@
     </main>
 
     <script type="module">
-        import { loadTestLevel } from "{{ url_for('static', filename='engine.mjs') }}";
+        import { loadLevelByID } from "{{ url_for('static', filename='engine.mjs') }}";
 
         const canvas = document.querySelector('canvas');
-        loadTestLevel(canvas);
+        loadLevelByID(canvas, '{{ level_id }}');
     </script>
 {% endblock %}

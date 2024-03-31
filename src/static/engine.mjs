@@ -628,6 +628,7 @@ class PlayerObject extends GameObject {
  * @typedef {{ playerX: number, playerY: number, objects: LevelDataObject[] }} LevelData
  */
 
+
 /**
  * A game level
  * @implements {Renderable}
@@ -635,10 +636,9 @@ class PlayerObject extends GameObject {
 class Level {
     /**
      * Load a new level from data into a canvas
-     * @param {LevelData} data 
      * @param {HTMLCanvasElement} canvas 
      */
-    constructor(data, canvas) {
+    constructor(canvas) {
         /**
          * @type {number}
          */
@@ -659,15 +659,50 @@ class Level {
          * @type {LevelData | undefined}
          */
         this.data = undefined;
+        /**
+         * @type {string | undefined}
+         */
+        this.errorMessage = undefined;
 
-        this.loadLevel(data);
+        this.scheduleRender(canvas);
+    }
+
+    /**
+     * Start rendering this level to a canvas
+     * @param {HTMLCanvasElement} canvas 
+     */
+    scheduleRender(canvas) {
+        // Remove any existing renderers on this canvas
+        const currentRenderer = /** @type {number | null} */ (canvas.getAttribute('renderer'));
+        if (currentRenderer !== null) {
+            cancelAnimationFrame(currentRenderer);
+        }
+
+        const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
+        ctx.setTransform(1, 0, 0, -1, 0, canvas.height - 1);
+
+        let prevFrame = 0;
+        const schedule = (/** @type {number} */ frameStamp) => {
+            const delta = (frameStamp - prevFrame) * 60 / 1000;
+
+            // Physics run at a constant tick rate
+            this.tick(delta);
+
+            // Render every frame you can
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.render(ctx);
+
+            prevFrame = frameStamp;
+            canvas.setAttribute('renderer', requestAnimationFrame(schedule).toString());
+        };
+        requestAnimationFrame(schedule);
     }
 
     /**
      * Load level data
      * @param {LevelData} data 
      */
-    loadLevel(data) {
+    loadData(data) {
         this.objects.forEach(obj => obj.level = undefined);
         this.objects = [];
         this.player = undefined;
@@ -711,42 +746,24 @@ class Level {
         ctx.fillRect(0, 0, GRID_SIZE, this.height);
         ctx.fillRect(this.width - GRID_SIZE, 0, GRID_SIZE, this.height);
 
+        if (!this.data) {
+            ctx.resetTransform();
+            ctx.font = '2rem sans-serif';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.errorMessage ?? 'Loading level...', this.width / 2, this.height / 2);
+            ctx.setTransform(1, 0, 0, -1, 0, this.height - 1);
+        }
+
         this.objects.forEach(obj => obj.render(ctx));
     }
-}
 
-/** @type {number | undefined} */
-let runningAnimationFrameFunc = undefined;
-
-/**
- * Set the rendering source for a canvas. This begins calls to `tick` and 
- * `render` every frame 
- * @param {HTMLCanvasElement} canvas 
- * @param {Renderable} obj 
- */
-function setGlobalRenderObject(canvas, obj) {
-    if (runningAnimationFrameFunc) {
-        cancelAnimationFrame(runningAnimationFrameFunc);
+    /**
+     * @param {string | undefined} msg 
+     */
+    setError(msg = undefined) {
+        this.errorMessage = msg;
     }
-
-    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
-    ctx.setTransform(1, 0, 0, -1, 0, canvas.height - 1);
-
-    let prevFrame = 0;
-    const schedule = (/** @type {number} */ frameStamp) => {
-        const delta = (frameStamp - prevFrame) * 60 / 1000;
-
-        // Physics run at a constant tick rate
-        obj.tick(delta);
-
-        // Render every frame you can
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        obj.render(ctx);
-
-        prevFrame = frameStamp;
-        runningAnimationFrameFunc = requestAnimationFrame(schedule);
-    };
-    requestAnimationFrame(schedule);
 }
 
 /**
@@ -755,29 +772,24 @@ function setGlobalRenderObject(canvas, obj) {
  * @param {LevelData} data 
  */
 export function loadLevel(canvas, data) {
-    setGlobalRenderObject(canvas, new Level(data, canvas));
+    const level = new Level(canvas);
+    level.loadData(data);
 }
 
 /**
- * Load the built-in test level into a canvas, replacing any existing level
+ * Load a new level into a canvas by fetching it from an URL, replacing any existing level
  * @param {HTMLCanvasElement} canvas 
+ * @param {string} id 
  */
-export function loadTestLevel(canvas) {
-    return loadLevel(canvas, {
-        playerX: 3,
-        playerY: 10,
-        objects: [
-            { type: 'block', x: 6, y: 2 },
-            { type: 'block', x: 10, y: 3 },
-            { type: 'block', x: 14, y: 4 },
-            { type: 'block', x: 15, y: 4 },
-            { type: 'block', x: 16, y: 4 },
-            { type: 'spike', x: 16, y: 5 },
-            { type: 'block', x: 17, y: 4 },
-            { type: 'block', x: 18, y: 4 },
-            { type: 'block', x: 20, y: 3 },
-            { type: 'block', x: 20, y: 2 },
-            { type: 'block', x: 20, y: 1 },
-        ]
-    });
+export async function loadLevelByID(canvas, id) {
+    const level = new Level(canvas);
+
+    const res = await fetch(`/api/levels/${id}/data`);
+    const data = /** @type {LevelData} */ (await res.json());
+    if (!res.ok) {
+        level.setError('Level not found');
+    }
+    else {
+        level.loadData(data);
+    }
 }
