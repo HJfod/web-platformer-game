@@ -1,10 +1,12 @@
+// @ts-check
 
 /**
  * @typedef {{ name: string, publisher: string, plays: number, url: string }} Level
+ * @typedef {{ name: string, url: string }} UnpublishedLevel
  */
 
 /**
- * @param {HTMLElement} target 
+ * @param {Element} target 
  */
 async function loadLevelsTo(target) {
     const res = await fetch('/api/levels');
@@ -50,7 +52,49 @@ async function loadLevelsTo(target) {
     }
 }
 
-const levelList = document.querySelector('#level-list');
+/**
+ * @param {Element} target 
+ */
+async function loadEditableLevelsTo(target) {
+    const res = await fetch('/api/levels/wip');
+    const json = await res.json();
+    if (!res.ok) {
+        return alert(`Unable to load levels: ${json.reason}`);
+    }
+
+    // Clear target list if it had any levels previously
+    target.replaceChildren();
+
+    const levels = /** @type {UnpublishedLevel[]} */ (json);
+    for (const level of levels) {
+        const article = document.createElement('article');
+        article.classList.add('level');
+
+        const column = document.createElement('div');
+        column.classList.add('column');
+        
+        const title = document.createElement('p');
+        title.classList.add('name');
+        title.innerText = level.name;
+        column.appendChild(title);
+        
+        article.appendChild(column);
+
+        const play = document.createElement('a');
+        play.innerText = 'Edit';
+        play.href = level.url;
+        article.appendChild(play);
+
+        target.appendChild(article);
+    }
+}
+
+const levelList = document.querySelector('#levels-list');
 if (levelList) {
     loadLevelsTo(levelList);
+}
+
+const createdLevelList = document.querySelector('#created-levels-list');
+if (createdLevelList) {
+    loadEditableLevelsTo(createdLevelList);
 }

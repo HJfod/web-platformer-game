@@ -1,0 +1,60 @@
+
+{% extends "layouts/page.html.j2" %}
+
+{% set title = "Create Level" %}
+
+{% block content %}
+    {% if not session.user_id %}
+
+        <h1>Creating levels requires you to <b>Log in</b></h1>
+
+    {% else %}
+
+        <a href="{{ url_for('userpage') }}">Back to userpage</a>
+
+        <div class="row">
+            <canvas width="768" height="768" style="background: #aaa;"></canvas>
+
+            <div class="column">
+                <p>Level name</p>
+                <input type="text" id="level-name" value="{{ level_name }}">
+                <button id="update-name">Update name</button>
+            </div>
+        </div>
+
+        <script type="module">
+            import { loadLevelByID } from "{{ url_for('static', filename='engine.mjs') }}";
+
+            const canvas = document.querySelector('canvas');
+
+            const nameInput = /** @type {HTMLInputElement} */ (document.querySelector('#level-name'));
+
+            let originalLevelName = '{{ level_name }}';
+            document.querySelector('#update-name').addEventListener('click', async e => {
+                try {
+                    const res = await fetch('/api/levels/wip/{{ level_id }}/update', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: nameInput.value,
+                        }),
+                        headers: {
+                            'Content-type': 'application/json; charset=UTF-8'
+                        }
+                    });
+                    const msg = await res.json();
+                    if (!res.ok) {
+                        throw msg.reason;
+                    }
+                    originalLevelName = nameInput.value;
+                    alert('Name updated!');
+                }
+                catch(e) {
+                    // Reset level name
+                    nameInput.value = originalLevelName;
+                    alert(`Error updating name: ${e}`);
+                }
+            });
+        </script>
+
+    {% endif %}
+{% endblock %}

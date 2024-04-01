@@ -20,6 +20,10 @@ article.level .name {
     font-weight: bold;
 }
 
+div.row {
+    display: flex;
+    flex-direction: row;
+}
 div.column {
     display: flex;
     flex-direction: column;

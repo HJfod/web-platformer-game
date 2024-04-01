@@ -33,6 +33,10 @@ class PublishLevel:
     data: dict
 
 @dataclass
+class UpdateLevelMetadata:
+    name: str
+
+@dataclass
 class Login:
     username: str
     password: str
@@ -96,17 +100,6 @@ def get_all_levels():
         })
     return json.dumps(response)
 
-@app.route("/api/levels/<string:id>/data")
-def get_level_data(id: str):
-    result = db.session.execute(text("""
-        SELECT data
-        FROM Levels
-        WHERE id = :id
-    """), {
-        "id": id,
-    })
-    return result.fetchone()[0]
-
 @app.route("/api/levels", methods=["POST"])
 def publish_level():
     # The day I use HTML forms is the day I shall be laid down to my final resting place
@@ -125,6 +118,96 @@ def publish_level():
     db.session.commit()
 
     return {}, 200
+
+@app.route("/api/levels/<int:id>/data")
+def get_level_data(id: int):
+    result = db.session.execute(text("""
+        SELECT data
+        FROM Levels
+        WHERE id = :id
+    """), {
+        "id": id,
+    })
+    return result.fetchone()[0]
+
+@app.route("/api/levels/wip")
+def get_users_wip_levels():
+    if not "user_id" in session:
+        return make_error_response(403, 'You need to log in to create levels')
+
+    result = db.session.execute(text("""
+        SELECT UnpublishedLevels.id, UnpublishedLevels.name
+        FROM Users
+        LEFT JOIN UnpublishedLevels ON Users.id = UnpublishedLevels.creator
+        WHERE Users.id = :user_id
+        GROUP BY UnpublishedLevels.id, UnpublishedLevels.name
+    """), {
+        "user_id": session["user_id"]
+    })
+
+    response = list()
+    for id, name in result.fetchall():
+        print(f"{id}, {name}")
+        if id != None and name != None:
+            response.append({
+                "name": str(name),
+                "url": url_for('edit_level', id=int(id)),
+            })
+    return json.dumps(response)
+
+@app.route("/api/levels/wip", methods=["POST"])
+def create_new_level():
+    if not "user_id" in session:
+        return make_error_response(403, 'You need to log in to create levels')
+
+    id = db.session.execute(text("""
+        INSERT INTO UnpublishedLevels (creator, name, data)
+        VALUES (:creator, :name, :data)
+        RETURNING id
+    """), {
+        "name": "New level",
+        "creator": session["user_id"],
+        "data": json.dumps({})
+    }).fetchone()[0]
+    db.session.commit()
+
+    return { "url": url_for('edit_level', id=id) }, 200
+
+@app.route("/api/levels/wip/<int:id>/update", methods=["POST"])
+def get_users_wip_level_update_name(id: int):
+    if not "user_id" in session:
+        return make_error_response(403, 'You need to log in to create levels')
+
+    params = UpdateLevelMetadata(**request.json)
+
+    db.session.execute(text("""
+        UPDATE UnpublishedLevels
+        SET name = :name
+        WHERE UnpublishedLevels.creator = :user_id AND UnpublishedLevels.id = :level_id
+    """), {
+        "name": params.name,
+        "user_id": session["user_id"],
+        "level_id": id,
+    })
+
+    return {}, 200
+
+@app.route("/api/levels/wip/<int:id>/data")
+def get_users_wip_level_data(id: int):
+    if not "user_id" in session:
+        return make_error_response(403, 'You need to log in to create levels')
+
+    result = db.session.execute(text("""
+        SELECT UnpublishedLevels.data
+        FROM Users
+        LEFT JOIN UnpublishedLevels ON Users.id = UnpublishedLevels.creator
+        WHERE Users.id = :user_id AND UnpublishedLevels.id = :level_id
+        GROUP BY UnpublishedLevels.id, UnpublishedLevels.name
+    """), {
+        "user_id": session["user_id"],
+        "level_id": id,
+    })
+    return result.fetchone()[0]
 
 ### Auth API ###
 
@@ -179,6 +262,24 @@ def api_auth_logout_user():
 def index():
     return render_template("pages/home.html.j2")
 
-@app.route("/level/<string:id>")
-def play_level(id: str):
+@app.route("/user")
+def userpage():
+    return render_template("pages/userpage.html.j2")
+
+@app.route("/edit/<int:id>")
+def edit_level(id: int):
+    result = db.session.execute(text("""
+        SELECT UnpublishedLevels.name
+        FROM Users
+        LEFT JOIN UnpublishedLevels ON Users.id = UnpublishedLevels.creator
+        WHERE Users.id = :user_id AND UnpublishedLevels.id = :level_id
+        GROUP BY UnpublishedLevels.name
+    """), {
+        "user_id": session["user_id"],
+        "level_id": id,
+    })
+    return render_template("pages/editor.html.j2", level_id=id, level_name=result.fetchone()[0])
+
+@app.route("/level/<int:id>")
+def play_level(id: int):
     return render_template("pages/level.html.j2", level_id=id)

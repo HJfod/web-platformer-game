@@ -1,0 +1,47 @@
+
+{% extends "layouts/page.html.j2" %}
+
+{% set title = "User Page" %}
+{% set scripts = ['fetch-levels.mjs'] %}
+
+{% block content %}
+    {% if not session.user_id %}
+
+        <h1>Creating levels requires you to <b>Log in</b></h1>
+
+    {% else %}
+
+        <a href="{{ url_for('index') }}">Back to home</a>
+
+        <h1>Pick level to edit</h1>
+
+        <button id="create-new">Create new level</button>
+
+        <div id="created-levels-list">
+            <p>Loading levels...</p>
+        </div>
+        
+        <script type="module">
+            document.querySelector('#create-new').addEventListener('click', async e => {
+                try {
+                    const res = await fetch('/api/levels/wip', {
+                        method: 'POST',
+                        body: JSON.stringify({}),
+                        headers: {
+                            'Content-type': 'application/json; charset=UTF-8'
+                        }
+                    });
+                    const msg = await res.json();
+                    if (!res.ok) {
+                        throw msg.reason;
+                    }
+                    window.location.href = msg.url;
+                }
+                catch(e) {
+                    alert(`Error creating level: ${e}`);
+                }
+            });
+        </script>
+
+    {% endif %}
+{% endblock %}

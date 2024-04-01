@@ -1,5 +1,5 @@
 
-DROP TABLE IF EXISTS Users, Levels, LevelData, LevelPlays, Reviews;
+DROP TABLE IF EXISTS Users, UnpublishedLevels, Levels, LevelPlays, Reviews;
 
 CREATE TABLE Users (
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -9,13 +9,21 @@ CREATE TABLE Users (
     CONSTRAINT username_length CHECK (LENGTH(username) >= 3 AND LENGTH(username) <= 20)
 );
 
+CREATE TABLE UnpublishedLevels (
+    id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    creator INT REFERENCES Users,
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 25),
+    data JSON NOT NULL,
+    CONSTRAINT creator_may_only_have_one_created_level_of_same_name UNIQUE (name, creator)
+);
+
 CREATE TABLE Levels (
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL CHECK (LENGTH(name) <= 25),
     publisher INT REFERENCES Users NOT NULL,
     published_at TIMESTAMP DEFAULT current_timestamp,
     data JSON NOT NULL,
-    UNIQUE (name, publisher)
+    CONSTRAINT creator_may_only_have_one_published_level_of_same_name UNIQUE (name, publisher)
 );
 
 CREATE TABLE LevelPlays (
@@ -28,5 +36,5 @@ CREATE TABLE Reviews (
     user_id INT REFERENCES Users NOT NULL,
     difficulty_rating INT NOT NULL CHECK(0 <= difficulty_rating AND difficulty_rating <= 3),
     body TEXT NOT NULL CHECK (LENGTH(body) <= 200),
-    UNIQUE (level_id, user_id)
+    CONSTRAINT only_one_review_per_level_per_user UNIQUE (level_id, user_id)
 );
