@@ -2,12 +2,11 @@
 {% extends "layouts/page.html.j2" %}
 
 {% set title = "Play level (" ~ level_id ~ ")" %}
-{% set styles = ['level.css'] %}
 
 {% block content %}
     <a href="{{ url_for('index') }}">Back to home</a>
 
-    <canvas width="768" height="768" style="background: #aaa;"></canvas>
+    <canvas width="704" height="704" style="background: #aaa;"></canvas>
 
     <script type="module">
         import { loadLevelByID } from "{{ url_for('static', filename='engine.mjs') }}";

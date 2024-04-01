@@ -27,21 +27,21 @@
     </head>
 
     <body>
-        <div class="login">
-            {% if session.username %}
-                <p>Logged in as {{ session.username }}</p>
-                <button id="logout">Logout</button>
-            {% else %}
-                <!-- the day i use http forms is the day i will be dead -->
-                <p>Log in</p>
-                <input id="username-input" type="text" name="username" placeholder="Username" required>
-                <input id="password-input" type="password" placeholder="Password" required>
-                <button id="login">Login</button>
-                <button id="create-account">Create Account</button>
-            {% endif %}
-        </div>
-
         <main>
+            <div class="login">
+                {% if session.username %}
+                    <p>Logged in as {{ session.username }}</p>
+                    <a id="logout">Logout</a>
+                {% else %}
+                    <!-- the day i use http forms is the day i will be dead -->
+                    <p>Log in</p>
+                    <input id="username-input" type="text" name="username" placeholder="Username" required>
+                    <input id="password-input" type="password" placeholder="Password" required>
+                    <a id="login">Login</a>
+                    <a id="create-account">Create Account</a>
+                {% endif %}
+            </div>
+
             {% block content %}{% endblock %}
         </main>
     </body>

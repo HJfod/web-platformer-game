@@ -13,12 +13,12 @@
         <a href="{{ url_for('userpage') }}">Back to userpage</a>
 
         <div class="row">
-            <canvas width="768" height="768" style="background: #aaa;"></canvas>
+            <canvas width="704" height="704" style="background: #aaa;"></canvas>
 
             <div class="column">
-                <button id="save">Save</button>
+                <a id="save">Save</a>
                 <p id="unsaved-notification" class="hidden">You have unsaved changes</p>
-                <button id="playtest">Playtest</button>
+                <a id="playtest">Playtest</a>
 
                 <fieldset>
                     <legend>Selected tool</legend>
@@ -50,22 +50,22 @@
                 {% else %}
                     <p>Level name</p>
                     <input type="text" id="level-name" value="{{ level_name }}">
-                    <button id="update-name">Update name</button>
+                    <a id="update-name">Update name</a>
                 {% endif %}
 
                 <fieldset>
                     <legend>Manage</legend>
                     <div class="column">
                         {% if published_id %}
-                            <button id="update-level">Update level</button>
+                            <a id="update-level">Update level</a>
                         {% else %}
-                            <button id="publish-level">Publish level</button>
+                            <a id="publish-level">Publish level</a>
                         {% endif %}
 
-                        <button id="delete-level">Delete level</button>
+                        <a id="delete-level">Delete level</a>
 
                         {% if published_id %}
-                            <button id="unpublish-level">Unpublish level</button>
+                            <a id="unpublish-level">Unpublish level</a>
                         {% endif %}
                     </div>
                 </fieldset>
