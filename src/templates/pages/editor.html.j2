@@ -16,23 +16,128 @@
             <canvas width="768" height="768" style="background: #aaa;"></canvas>
 
             <div class="column">
-                <p>Level name</p>
-                <input type="text" id="level-name" value="{{ level_name }}">
-                <button id="update-name">Update name</button>
+                <button id="save">Save</button>
+                <p id="unsaved-notification" class="hidden">You have unsaved changes</p>
+                <button id="playtest">Playtest</button>
+
+                <fieldset>
+                    <legend>Selected tool</legend>
+                    <input type="radio" name="selected-tool" value="edit" checked>
+                    <label for="edit">Edit</label>
+                    <br>
+                    <input type="radio" name="selected-tool" value="eraser">
+                    <label for="eraser">Delete</label>
+                    <br>
+                    <input type="radio" name="selected-tool" value="block">
+                    <label for="block">Place Block</label>
+                    <br>
+                    <input type="radio" name="selected-tool" value="spike">
+                    <label for="spike">Place Spike</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Editor options</legend>
+                    <input type="checkbox" name="show-grid" checked>
+                    <label for="show-grid">Show Grid</label>
+                    <br>
+                    <input type="checkbox" name="align-to-grid" checked>
+                    <label for="align-to-grid">Snap to Grid</label>
+                </fieldset>
+
+                {% if published_id %}
+                    <p>Level name</p>
+                    <input type="text" id="level-name" value="{{ level_name }}" disabled>
+                {% else %}
+                    <p>Level name</p>
+                    <input type="text" id="level-name" value="{{ level_name }}">
+                    <button id="update-name">Update name</button>
+                {% endif %}
+
+                <fieldset>
+                    <legend>Manage</legend>
+                    <div class="column">
+                        {% if published_id %}
+                            <button id="update-level">Update level</button>
+                        {% else %}
+                            <button id="publish-level">Publish level</button>
+                        {% endif %}
+
+                        <button id="delete-level">Delete level</button>
+
+                        {% if published_id %}
+                            <button id="unpublish-level">Unpublish level</button>
+                        {% endif %}
+                    </div>
+                </fieldset>
             </div>
         </div>
 
         <script type="module">
-            import { loadLevelByID } from "{{ url_for('static', filename='engine.mjs') }}";
+            import { loadEditorByID } from "{{ url_for('static', filename='engine.mjs') }}";
 
             const canvas = document.querySelector('canvas');
+            const level = await loadEditorByID(canvas, '{{ level_id }}');
+
+            level.setEditorUnsavedNotification(document.querySelector('#unsaved-notification'));
+            
+            document.querySelector('#save').addEventListener('click', async e => {
+                level.saveToServer();
+            });
+            document.querySelector('#playtest').addEventListener('click', async e => {
+                /** @type {HTMLButtonElement} */ (e.target).innerText = level.toggleEditorMode() ? 'Playtest' : 'Stop playtest';
+            });
+            document.querySelector('#delete-level')?.addEventListener('click', async e => {
+                if (confirm('Delete project {{ level_name }}? This does not unpublish it!')) {
+                    await level.serverAction('delete');
+                    window.location.href = "{{ url_for('userpage') }}";
+                }
+            });
+            document.querySelector('#unpublish-level')?.addEventListener('click', async e => {
+                if (confirm('Unpublish {{ level_name }}?')) {
+                    await level.serverAction('unpublish');
+                    window.location.reload();
+                }
+            });
+            document.querySelector('#update-level')?.addEventListener('click', async e => {
+                if (confirm('Update {{ level_name }}?')) {
+                    await level.serverAction('update');
+                    window.location.reload();
+                }
+            });
+            document.querySelector('#publish-level')?.addEventListener('click', async e => {
+                if (confirm('Publish {{ level_name }}? You cannot change the name afterwards!')) {
+                    await level.serverAction('publish');
+                    window.location.reload();
+                }
+            });
+
+            document.querySelectorAll('[name="selected-tool"]').forEach(btn => {
+                btn.addEventListener('change', e => {
+                    switch (e.currentTarget.value) {
+                        case 'eraser': case 'edit': {
+                            level.setEditorTool(e.currentTarget.value);
+                        } break;
+
+                        default: {
+                            level.setEditorTool('place');
+                            level.setEditorObj(e.currentTarget.value);
+                        } break;
+                    }
+                });
+            });
+            document.querySelector('[name="show-grid"]').addEventListener('change', e => {
+                level.setEditorShowGrid(e.currentTarget.checked);
+            });
+            document.querySelector('[name="align-to-grid"]').addEventListener('change', e => {
+                level.setEditorGridAlign(e.currentTarget.checked);
+            });
 
             const nameInput = /** @type {HTMLInputElement} */ (document.querySelector('#level-name'));
 
             let originalLevelName = '{{ level_name }}';
             document.querySelector('#update-name').addEventListener('click', async e => {
                 try {
-                    const res = await fetch('/api/levels/wip/{{ level_id }}/update', {
+                    const res = await fetch('/api/levels/wip/{{ level_id }}/update-metadata', {
                         method: 'POST',
                         body: JSON.stringify({
                             name: nameInput.value,

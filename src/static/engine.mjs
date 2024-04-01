@@ -1,6 +1,6 @@
 // @ts-check
 
-const GRID_SIZE = 32;
+const OBJECT_UNIT = 32;
 
 /**
  * Clamp a value to be between min and max
@@ -67,12 +67,23 @@ class Hitbox {
     midX() {
         return this.x + this.width / 2;
     }
+
+    /**
+     * @param {number} x 
+     * @param {number} y 
+     */
+    contains(x, y) {
+        return x >= this.left() && x <= this.right() && y >= this.bottom() && y <= this.top();
+    }
 }
 
 const inputManager = {
     left: false,
     right: false,
     up: false,
+    mouseX: 0,
+    mouseY: 0,
+    mouseDown: false,
 };
 document.addEventListener('keydown', e => {
     switch (e.code) {
@@ -87,6 +98,16 @@ document.addEventListener('keyup', e => {
         case 'ArrowRight': case 'KeyD':                  inputManager.right = false; break;
         case 'ArrowUp':    case 'KeyW': case 'KeySpace': inputManager.up = false; break;
     }
+});
+document.addEventListener('mousemove', e => {
+    inputManager.mouseX = e.clientX;
+    inputManager.mouseY = e.clientY;
+});
+document.addEventListener('mousedown', e => {
+    inputManager.mouseDown = true;
+});
+document.addEventListener('mouseup', e => {
+    inputManager.mouseDown = false;
 });
 
 /**
@@ -107,8 +128,9 @@ class GameObject {
      * @param {Level} level 
      * @param {number} x 
      * @param {number} y 
+     * @param {string} color
      */
-    constructor(type, level, x = 0, y = 0) {
+    constructor(type, level, x = 0, y = 0, color = '#000') {
         /**
          * @type {ObjectType}
          */
@@ -117,10 +139,6 @@ class GameObject {
          * @type {Level | undefined}
          */
         this.level = level;
-        /**
-         * @type {GridPoint}
-         */
-        this.gridPosition = { x: x / GRID_SIZE, y: y / GRID_SIZE };
         /**
          * @type {number}
          */
@@ -134,6 +152,18 @@ class GameObject {
          */
         this.rotation = 0;
         /**
+         * @type {string}
+         */
+        this.color = color;
+        /**
+         * @type {number}
+         */
+        this.opacity = 1;
+        /**
+         * @type {'to-delete' | 'to-edit' | undefined}
+         */
+        this.hovered = undefined;
+        /**
          * @type {GameObject[]}
          */
         this.children = [];
@@ -141,6 +171,10 @@ class GameObject {
          * @type {ObjectCollision}
          */
         this.collision = 'deco';
+        /**
+         * @type {boolean}
+         */
+        this.deletable = true;
 
         this.init();
 
@@ -181,6 +215,7 @@ class GameObject {
     hitbox() {
         return undefined;
     }
+
     /**
      * Tick the physics of the object. The object should use `delta` to 
      * calculate how much time has passed between `tick()` calls to ensure 
@@ -189,12 +224,32 @@ class GameObject {
      */
     tick(delta) {}
     /**
-     * Tick the physics of the object. The object should use `delta` to 
-     * calculate how much time has passed between `tick()` calls to ensure 
-     * physics are consistent across framerates
+     * Render the object. Subclasses should NOT override this method; instead, 
+     * they should override `doRender`.
      * @type {Renderable['render']}
      */
-    render(ctx) {}
+    render(ctx) {
+        ctx.save();
+
+        ctx.translate(this.x + OBJECT_UNIT / 2, this.y + OBJECT_UNIT / 2);
+        ctx.rotate(this.rotation);
+        ctx.globalAlpha = this.opacity;
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2;
+
+        switch (this.hovered) {
+            case 'to-delete': ctx.strokeStyle = '#f00'; break;
+            case 'to-edit':   ctx.strokeStyle = '#0fa'; break;
+        }
+        this.doRender(ctx);
+
+        ctx.restore();
+    }
+    /**
+     * Render the object. The context has been translated to the right place
+     * @type {Renderable['render']}
+     */
+    doRender(ctx) {}
 }
 
 /**
@@ -216,12 +271,8 @@ class ParticleObject extends GameObject {
      * @param {number} y 
      */
     constructor(level, count, life, color, x, y) {
-        super('particles', level, x, y);
+        super('particles', level, x, y, color);
 
-        /**
-         * @type {string}
-         */
-        this.color = color;
         /**
          * @type {Particle[]}
          */
@@ -262,19 +313,15 @@ class ParticleObject extends GameObject {
             this.removeThis();
         }
     }
-
-    /** @type {GameObject['render']} */
-    render(ctx) {
+    /** @type {GameObject['doRender']} */
+    doRender(ctx) {
         this.particles.forEach(p => {
             ctx.save();
-    
             ctx.fillStyle = this.color;
-            
-            ctx.translate(this.x + p.x, this.y + p.y);
+            ctx.translate(p.x, p.y);
             ctx.scale(p.life / 15, p.life / 15);
             ctx.rotate(p.angle);
             ctx.fillRect(-3, -3, 6, 6);
-
             ctx.restore();
         });
     }
@@ -290,29 +337,20 @@ class BlockObject extends GameObject {
     }
     /** @type {GameObject['hitbox']} */
     hitbox() {
-        return new Hitbox(0, 0, GRID_SIZE, GRID_SIZE, this.rotation);
+        return new Hitbox(0, 0, OBJECT_UNIT, OBJECT_UNIT, this.rotation);
     }
 
-    /** @type {GameObject['render']} */
-    render(ctx) {
-        ctx.save();
-
-        ctx.translate(this.x + GRID_SIZE / 2, this.y + GRID_SIZE / 2);
-        ctx.rotate(this.rotation);
-
-        const gradient = ctx.createLinearGradient(0, GRID_SIZE / 2, 0, -GRID_SIZE);
+    /** @type {GameObject['doRender']} */
+    doRender(ctx) {
+        const gradient = ctx.createLinearGradient(0, OBJECT_UNIT / 2, 0, -OBJECT_UNIT);
         gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
         gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
-
+        
         ctx.fillStyle = gradient;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(-GRID_SIZE / 2, -GRID_SIZE / 2, GRID_SIZE, GRID_SIZE, 3);
+        ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
         ctx.fill();
         ctx.stroke();
-
-        ctx.restore();
     }
 }
 
@@ -327,31 +365,22 @@ class SpikeObject extends GameObject {
 
     /** @type {GameObject['hitbox']} */
     hitbox() {
-        return new Hitbox(GRID_SIZE / 4, 0, GRID_SIZE / 2, GRID_SIZE / 2, this.rotation);
+        return new Hitbox(OBJECT_UNIT / 4, 0, OBJECT_UNIT / 2, OBJECT_UNIT / 2, this.rotation);
     }
     
-    /** @type {GameObject['render']} */
-    render(ctx) {
-        ctx.save();
-
-        ctx.translate(this.x + GRID_SIZE / 2, this.y + GRID_SIZE / 2);
-        ctx.rotate(this.rotation);
-
-        const gradient = ctx.createLinearGradient(0, GRID_SIZE / 2, 0, -GRID_SIZE);
+    /** @type {GameObject['doRender']} */
+    doRender(ctx) {
+        const gradient = ctx.createLinearGradient(0, OBJECT_UNIT / 2, 0, -OBJECT_UNIT);
         gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
         gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
 
         ctx.fillStyle = gradient;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(-GRID_SIZE / 2, -GRID_SIZE / 2);
-        ctx.lineTo(0, +GRID_SIZE / 2);
-        ctx.lineTo(GRID_SIZE / 2, -GRID_SIZE / 2);
+        ctx.moveTo(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
+        ctx.lineTo(0, +OBJECT_UNIT / 2);
+        ctx.lineTo(OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
         ctx.fill();
         ctx.stroke();
-
-        ctx.restore();
     }
 }
 
@@ -395,6 +424,8 @@ class PlayerObject extends GameObject {
          * @type {number | undefined}
          */
         this.collidingBlockRight = undefined;
+
+        this.deletable = false;
     }
 
     checkCollisions() {
@@ -448,25 +479,27 @@ class PlayerObject extends GameObject {
         }
 
         // Check level borders
-        if (player.top() > level.height - GRID_SIZE) {
-            this.collidingBlockAbove = level.height - GRID_SIZE;
+        if (player.top() > level.height - OBJECT_UNIT) {
+            this.collidingBlockAbove = level.height - OBJECT_UNIT;
         }
-        if (player.bottom() < GRID_SIZE) {
-            this.collidingBlockBelow = GRID_SIZE;
+        if (player.bottom() < OBJECT_UNIT) {
+            this.collidingBlockBelow = OBJECT_UNIT;
         }
-        if (player.right() > level.width - GRID_SIZE) {
-            this.collidingBlockRight = level.width - GRID_SIZE;
+        if (player.right() > level.width - OBJECT_UNIT) {
+            this.collidingBlockRight = level.width - OBJECT_UNIT;
         }
-        if (player.left() < GRID_SIZE) {
-            this.collidingBlockLeft = GRID_SIZE;
+        if (player.left() < OBJECT_UNIT) {
+            this.collidingBlockLeft = OBJECT_UNIT;
         }
     }
 
-    kill() {
-        if (this.level) {
-            new ParticleObject(this.level, 15, 60, "#f07", this.x, this.y);
-        }
-        
+    /**
+     * @param {number} x 
+     * @param {number} y 
+     */
+    reset(x, y) {
+        this.x = x;
+        this.y = y;
         this.acc.x = 0;
         this.acc.y = 0;
         this.speed.x = 0;
@@ -476,17 +509,22 @@ class PlayerObject extends GameObject {
         this.collidingBlockAbove = undefined;
         this.collidingBlockLeft  = undefined;
         this.collidingBlockRight = undefined;
+    }
+    kill() {
+        if (this.level) {
+            new ParticleObject(this.level, 15, 60, "#f07", this.x, this.y);
+        }
         this.level?.reset();
     }
 
     /** @type {GameObject['hitbox']} */
     hitbox() {
-        return new Hitbox(0, 0, GRID_SIZE, GRID_SIZE, this.rotation);
+        return new Hitbox(0, 0, OBJECT_UNIT, OBJECT_UNIT, this.rotation);
     }
 
     /** @type {GameObject['tick']} */
     tick(delta) {
-        if (!this.level) return;
+        if (!this.level || this.level.editorMode) return;
 
         this.checkCollisions();
 
@@ -559,8 +597,8 @@ class PlayerObject extends GameObject {
             }
         }
         else if (this.collidingBlockAbove !== undefined) {
-            if (this.y > this.collidingBlockAbove - GRID_SIZE) {
-                this.y = this.collidingBlockAbove - GRID_SIZE;
+            if (this.y > this.collidingBlockAbove - OBJECT_UNIT) {
+                this.y = this.collidingBlockAbove - OBJECT_UNIT;
             }
             if (this.speed.y > 0) this.speed.y = 0;
         }
@@ -571,8 +609,8 @@ class PlayerObject extends GameObject {
             if (this.speed.x < 0) this.speed.x = 0;
         }
         else if (this.collidingBlockRight !== undefined) {
-            if (this.x > this.collidingBlockRight - GRID_SIZE) {
-                this.x = this.collidingBlockRight - GRID_SIZE;
+            if (this.x > this.collidingBlockRight - OBJECT_UNIT) {
+                this.x = this.collidingBlockRight - OBJECT_UNIT;
             }
             if (this.speed.x > 0) this.speed.x = 0;
         }
@@ -586,10 +624,8 @@ class PlayerObject extends GameObject {
         }
     }
 
-    /** @type {GameObject['render']} */
-    render(ctx) {
-        ctx.save();
-
+    /** @type {GameObject['doRender']} */
+    doRender(ctx) {
         if (this.squish.y < this.speed.y) {
             this.squish.y += 2.3;
         }
@@ -600,34 +636,29 @@ class PlayerObject extends GameObject {
             this.squish.y = this.speed.y;
         }
 
-        ctx.translate(this.x + GRID_SIZE / 2, this.y + GRID_SIZE / 2);
         ctx.scale(
             1 - clamp(this.squish.y * 0.02, -0.1, 0.5),
             1 - clamp(this.squish.x * 0.02, -0.1, 0.5)
         );
-        ctx.rotate(this.rotation);
 
-        const gradient = ctx.createLinearGradient(0, +GRID_SIZE / 2, 0, -GRID_SIZE);
+        const gradient = ctx.createLinearGradient(0, +OBJECT_UNIT / 2, 0, -OBJECT_UNIT);
         gradient.addColorStop(0, "#f07");
         gradient.addColorStop(1, "#07f");
 
         ctx.fillStyle = gradient;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
+        ctx.globalAlpha = this.level?.editorMode ? 0.3 : 1;
         ctx.beginPath();
-        ctx.roundRect(-GRID_SIZE / 2, -GRID_SIZE / 2, GRID_SIZE, GRID_SIZE, 3);
+        ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
         ctx.fill();
         ctx.stroke();
-
-        ctx.restore();
     }
 }
 
 /**
  * @typedef {{ x: number, y: number, type: ObjectType }} LevelDataObject
- * @typedef {{ playerX: number, playerY: number, objects: LevelDataObject[] }} LevelData
+ * @typedef {{ playerX: number | undefined, playerY: number | undefined, objects: LevelDataObject[] | undefined }} LevelData
+ * @typedef {'place' | 'edit' | 'eraser'} EditorTool
  */
-
 
 /**
  * A game level
@@ -637,8 +668,17 @@ class Level {
     /**
      * Load a new level from data into a canvas
      * @param {HTMLCanvasElement} canvas 
+     * @param {string} id
      */
-    constructor(canvas) {
+    constructor(canvas, id) {
+        /**
+         * @type {string}
+         */
+        this.id = id;
+        /**
+         * @type {HTMLCanvasElement}
+         */
+        this.canvas = canvas;
         /**
          * @type {number}
          */
@@ -663,8 +703,46 @@ class Level {
          * @type {string | undefined}
          */
         this.errorMessage = undefined;
+        /**
+         * @type {boolean}
+         */
+        this.editorMode = false;
+        /**
+         * @type {GameObject | undefined}
+         */
+        this.editorGhostObject = undefined;
+        /**
+         * @type {boolean}
+         */
+        this.editorSnapToGrid = true;
+        /**
+         * @type {boolean}
+         */
+        this.editorShowGrid = true;
+        /**
+         * @type {GameObject | undefined}
+         */
+        this.editorClickedObj = undefined;
+        /**
+         * @type {EditorTool}
+         */
+        this.editorTool = 'edit';
+        /**
+         * @type {boolean}
+         */
+        this.editorHasUnsavedChanges = false;
+        /**
+         * @type {Element | undefined}
+         */
+        this.editorUnsavedChangesNotification = undefined;
 
         this.scheduleRender(canvas);
+
+        window.addEventListener('beforeunload', e => {
+            if (this.editorMode && this.editorHasUnsavedChanges) {
+                e.preventDefault();
+            }
+        });
     }
 
     /**
@@ -699,6 +777,36 @@ class Level {
     }
 
     /**
+     * @returns {[number, number]}
+     */
+    playerOrig() {
+        return [this.data?.playerX ?? this.width / 2, this.data?.playerY ?? this.height / 2]
+    }
+
+    /**
+     * @param {ObjectType} type 
+     * @param {number} x 
+     * @param {number} y 
+     * @returns {GameObject | undefined}
+     */
+    createObject(type, x, y) {
+        switch (type) {
+            default: case 'block': {
+                return new BlockObject(type, this, x, y);
+            };
+
+            case 'spike': {
+                return new SpikeObject(type, this, x, y);
+            };
+
+            case 'player': {
+                console.error(`Illegal object type ${type}`);
+                return undefined;
+            };
+        }
+    }
+
+    /**
      * Load level data
      * @param {LevelData} data 
      */
@@ -708,43 +816,119 @@ class Level {
         this.player = undefined;
         this.data = data;
 
-        this.player = new PlayerObject(this, data.playerX * GRID_SIZE, data.playerY * GRID_SIZE);
+        const [x, y] = this.playerOrig();
+        this.player = new PlayerObject(this, x, y);
 
-        data.objects.forEach(obj => {
-            switch (obj.type) {
-                default: case 'block': {
-                    new BlockObject(obj.type, this, obj.x * GRID_SIZE, obj.y * GRID_SIZE);
-                } break;
-
-                case 'spike': {
-                    new SpikeObject(obj.type, this, obj.x * GRID_SIZE, obj.y * GRID_SIZE);
-                } break;
-
-                case 'player': {
-                    console.error(`Illegal object type ${obj.type}`);
-                } break;
-            }
-        });
+        data.objects?.forEach(obj => this.createObject(obj.type, obj.x, obj.y));
     }
 
     reset() {
         if (this.player && this.data) {
-            this.player.x = this.data.playerX * GRID_SIZE;
-            this.player.y = this.data.playerY * GRID_SIZE;
+            const [x, y] = this.playerOrig();
+            this.player.reset(x, y);
+            this.editorClickedObj = undefined;
         }
     }
 
     /** @type {Renderable['tick']} */
     tick(delta) {
+        if (this.editorGhostObject) {
+            this.editorGhostObject.collision = 'deco';
+            this.editorGhostObject.opacity = 0; // this is overridden later if needed
+        }
+        
+        if (this.editorMode) {
+            const rect = this.canvas.getBoundingClientRect();
+
+            let x = inputManager.mouseX - rect.left;
+            let y = rect.bottom - inputManager.mouseY;
+            let gridX = x;
+            let gridY = y;
+
+            if (x >= 0 && x <= this.width && y >= 0 && y <= this.height) {
+                if (this.editorSnapToGrid) {
+                    gridX = Math.floor(x / OBJECT_UNIT) * OBJECT_UNIT;
+                    gridY = Math.floor(y / OBJECT_UNIT) * OBJECT_UNIT;
+                }
+                else {
+                    gridX -= OBJECT_UNIT / 2;
+                    gridY -= OBJECT_UNIT / 2;
+                }
+    
+                if (this.editorGhostObject && this.editorTool == 'place') {
+                    this.editorGhostObject.x = gridX;
+                    this.editorGhostObject.y = gridY;
+                    this.editorGhostObject.opacity = 0.3;
+                    if (inputManager.mouseDown && !this.editorClickedObj) {
+                        let obj = this.createObject(
+                            this.editorGhostObject.type,
+                            this.editorGhostObject.x,
+                            this.editorGhostObject.y
+                        );
+                        this.editorClickedObj = obj;
+                        this.dirtify();
+                    }
+                }
+    
+                let hoveredObj = undefined;
+                for (const obj of this.objects) {
+                    const hovered = obj.abshitbox()?.contains(x, y);
+                    if (this.editorTool == 'eraser' && hovered && !hoveredObj) {
+                        obj.hovered = 'to-delete';
+                        hoveredObj = obj;
+                    }
+                    else if (this.editorTool == 'edit' && hovered && !hoveredObj) {
+                        obj.hovered = 'to-edit';
+                        hoveredObj = obj;
+                    }
+                    else {
+                        obj.hovered = undefined;
+                    }
+                }
+    
+                if (hoveredObj && inputManager.mouseDown && !this.editorClickedObj) {
+                    if (this.editorTool == 'eraser') {
+                        if (hoveredObj.deletable) {
+                            hoveredObj.removeThis();
+                        }
+                    }
+                    else if (this.editorTool == 'edit') {
+                        // todo
+                    }
+                    this.editorClickedObj = hoveredObj;
+                    this.dirtify();
+                }
+            }
+
+            if (!inputManager.mouseDown) {
+                this.editorClickedObj = undefined;
+            }
+        }
+
         this.objects.forEach(obj => obj.tick(delta));
     }
     /** @type {Renderable['render']} */
     render(ctx) {
+        // Render grid in editor
+        if (this.editorMode && this.editorShowGrid) {
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.lineWidth = 0.5;
+            for (let x = OBJECT_UNIT; x < this.width; x += OBJECT_UNIT) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, this.height);
+            }
+            for (let y = OBJECT_UNIT; y < this.height; y += OBJECT_UNIT) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(this.width, y);
+            }
+            ctx.stroke();
+        }
+
         ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, this.width, GRID_SIZE);
-        ctx.fillRect(0, this.height - GRID_SIZE, this.width, GRID_SIZE);
-        ctx.fillRect(0, 0, GRID_SIZE, this.height);
-        ctx.fillRect(this.width - GRID_SIZE, 0, GRID_SIZE, this.height);
+        ctx.fillRect(0, 0, this.width, OBJECT_UNIT);
+        ctx.fillRect(0, this.height - OBJECT_UNIT, this.width, OBJECT_UNIT);
+        ctx.fillRect(0, 0, OBJECT_UNIT, this.height);
+        ctx.fillRect(this.width - OBJECT_UNIT, 0, OBJECT_UNIT, this.height);
 
         if (!this.data) {
             ctx.resetTransform();
@@ -754,8 +938,75 @@ class Level {
             ctx.fillText(this.errorMessage ?? 'Loading level...', this.width / 2, this.height / 2);
             ctx.setTransform(1, 0, 0, -1, 0, this.height - 1);
         }
+        
+        this.objects.forEach(obj => {
+            ctx.globalAlpha = obj.opacity;
+            obj.render(ctx);
+            ctx.globalAlpha = 1;
+        });
+    }
 
-        this.objects.forEach(obj => obj.render(ctx));
+    dirtify() {
+        this.editorHasUnsavedChanges = true;
+        this.editorUnsavedChangesNotification?.classList.remove('hidden');
+    }
+    updateData() {
+        if (!this.editorMode || !this.data || !this.player) return;
+
+        this.data.playerX = this.player.x;
+        this.data.playerY = this.player.y;
+
+        this.data.objects = [];
+        for (const obj of this.objects) {
+            if (obj == this.editorGhostObject || obj == this.player) {
+                continue;
+            }
+            this.data.objects?.push({
+                type: obj.type,
+                x: obj.x,
+                y: obj.y,
+            });
+        }
+    }
+    async serverAction(action) {
+        try {
+            await this.saveToServer();
+            const res = await fetch(`/api/levels/wip/${this.id}/${action}`, {
+                method: 'POST',
+                body: JSON.stringify(this.data),
+                headers: {
+                    'Content-type': 'application/json; charset=UTF-8'
+                }
+            });
+            const msg = await res.json();
+            if (!res.ok) {
+                throw msg.reason;
+            }
+        }
+        catch(e) {
+            alert(`Error syncing level to servers: ${e}`);
+        }
+    }
+    async saveToServer() {
+        try {
+            this.updateData();
+            const res = await fetch(`/api/levels/wip/${this.id}/update-data`, {
+                method: 'POST',
+                body: JSON.stringify(this.data),
+                headers: {
+                    'Content-type': 'application/json; charset=UTF-8'
+                }
+            });
+            const msg = await res.json();
+            if (!res.ok) {
+                throw msg.reason;
+            }
+            this.editorHasUnsavedChanges = false;
+            this.editorUnsavedChangesNotification?.classList.add('hidden');
+        }
+        catch(e) {
+            alert(`Error saving level: ${e}`);
+        }
     }
 
     /**
@@ -764,32 +1015,91 @@ class Level {
     setError(msg = undefined) {
         this.errorMessage = msg;
     }
-}
-
-/**
- * Load a new level into a canvas, replacing any existing level
- * @param {HTMLCanvasElement} canvas 
- * @param {LevelData} data 
- */
-export function loadLevel(canvas, data) {
-    const level = new Level(canvas);
-    level.loadData(data);
+    /**
+     * @param {boolean} mode 
+     */
+    setEditorMode(mode) {
+        this.editorMode = mode;
+        this.reset();
+    }
+    toggleEditorMode() {
+        this.setEditorMode(!this.editorMode);
+        return this.editorMode;
+    }
+    /**
+     * @param {EditorTool} tool 
+     */
+    setEditorTool(tool) {
+        this.editorTool = tool;
+    }
+    /**
+     * @param {ObjectType} obj 
+     */
+    setEditorObj(obj) {
+        if (this.editorGhostObject) {
+            this.editorGhostObject.removeThis();
+        }
+        this.editorGhostObject = this.createObject(obj, 0, 0);
+    }
+    /**
+     * @param {boolean} show 
+     */
+    setEditorShowGrid(show) {
+        this.editorShowGrid = show;
+    }
+    /**
+     * @param {boolean} align 
+     */
+    setEditorGridAlign(align) {
+        this.editorSnapToGrid = align;
+    }
+    /**
+     * @param {Element | undefined} target 
+     */
+    setEditorUnsavedNotification(target) {
+        this.editorUnsavedChangesNotification = target;
+    }
 }
 
 /**
  * Load a new level into a canvas by fetching it from an URL, replacing any existing level
  * @param {HTMLCanvasElement} canvas 
  * @param {string} id 
+ * @returns {Promise<Level>}
  */
 export async function loadLevelByID(canvas, id) {
-    const level = new Level(canvas);
+    const level = new Level(canvas, id);
 
     const res = await fetch(`/api/levels/${id}/data`);
     const data = /** @type {LevelData} */ (await res.json());
     if (!res.ok) {
         level.setError('Level not found');
+        return Promise.reject('Level not found');
     }
     else {
         level.loadData(data);
+        return level;
+    }
+}
+
+/**
+ * Load a new level into a canvas by fetching it from an URL, replacing any existing level
+ * @param {HTMLCanvasElement} canvas 
+ * @param {string} id 
+ * @returns {Promise<Level>}
+ */
+export async function loadEditorByID(canvas, id) {
+    const level = new Level(canvas, id);
+    level.setEditorMode(true);
+
+    const res = await fetch(`/api/levels/wip/${id}/data`);
+    const data = /** @type {LevelData} */ (await res.json());
+    if (!res.ok) {
+        level.setError('Level not found');
+        return Promise.reject('Level not found');
+    }
+    else {
+        level.loadData(data);
+        return level;
     }
 }

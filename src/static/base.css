@@ -6,6 +6,14 @@ main {
     gap: .5rem;
 }
 
+p {
+    margin: 0;
+}
+
+.hidden {
+    display: none;
+}
+
 div.levels-list {
     width: clamp(40ch, 70ch, 60vw);
     display: flex;

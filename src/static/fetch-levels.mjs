@@ -1,15 +1,15 @@
 // @ts-check
 
 /**
- * @typedef {{ name: string, publisher: string, plays: number, url: string }} Level
+ * @typedef {{ name: string, publisher: string, plays: number, play_url: string, edit_url?: string }} Level
  * @typedef {{ name: string, url: string }} UnpublishedLevel
  */
 
 /**
  * @param {Element} target 
  */
-async function loadLevelsTo(target) {
-    const res = await fetch('/api/levels');
+async function loadLevelsTo(target, my = false) {
+    const res = await fetch(`/api/levels${my ? '/my' : ''}`);
     const json = await res.json();
     if (!res.ok) {
         return alert(`Unable to load levels: ${json.reason}`);
@@ -43,10 +43,22 @@ async function loadLevelsTo(target) {
 
         article.appendChild(column);
 
+        const row = document.createElement('div');
+        row.classList.add('row');
+
+        if (level.edit_url) {
+            const edit = document.createElement('a');
+            edit.innerText = 'Edit';
+            edit.href = level.edit_url;
+            row.appendChild(edit);
+        }
+
         const play = document.createElement('a');
         play.innerText = 'Play';
-        play.href = level.url;
-        article.appendChild(play);
+        play.href = level.play_url;
+        row.appendChild(play);
+
+        article.appendChild(row);
 
         target.appendChild(article);
     }
@@ -92,6 +104,11 @@ async function loadEditableLevelsTo(target) {
 const levelList = document.querySelector('#levels-list');
 if (levelList) {
     loadLevelsTo(levelList);
+}
+
+const myLevelList = document.querySelector('#my-levels-list');
+if (myLevelList) {
+    loadLevelsTo(myLevelList, true);
 }
 
 const createdLevelList = document.querySelector('#created-levels-list');
