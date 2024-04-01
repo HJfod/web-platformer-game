@@ -82,8 +82,6 @@ def get_all_levels():
             (SELECT COUNT(*) FROM LevelPlays WHERE Levels.id = LevelPlays.level_id),
             (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id)
         FROM Levels
-        LEFT JOIN LevelPlays ON Levels.id = LevelPlays.level_id
-        LEFT JOIN LevelClears ON Levels.id = LevelClears.level_id
         LEFT JOIN Users ON Users.id = Levels.publisher
         GROUP BY Levels.id, Levels.name, Users.id, Users.username
     """))
