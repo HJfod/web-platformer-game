@@ -2,9 +2,12 @@
 {% extends "layouts/page.html.j2" %}
 
 {% set title = "Home" %}
+{% set scripts = ['fetch-levels.mjs'] %}
 
 {% block content %}
     <h1>awesome game</h1>
+
+    <div id="level-list"></div>
 
     {% if session.user_id %}
         <button id="publish">publish test level</button>

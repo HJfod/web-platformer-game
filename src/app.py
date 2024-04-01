@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template, jsonify, make_response, request, session
+from flask import Flask, render_template, jsonify, url_for, request, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from os import getenv, path
@@ -60,7 +60,7 @@ def handle_error(e: IntegrityError):
     try:
         reason = human_readable_reasons[e.orig.diag.constraint_name]
     except:
-        reason = e._message()
+        reason = f"Database constraint '{e.orig.diag.constraint_name}' violated"
 
     return make_error_response(400, reason)
 
@@ -79,12 +79,22 @@ def handle_error(e: HTTPException):
 @app.route("/api/levels")
 def get_all_levels():
     result = db.session.execute(text("""
-        SELECT Levels.name, Levels.publisher, COUNT(LevelPlays.user_id)
+        SELECT Levels.id, Levels.name, Users.username, COUNT(LevelPlays.user_id)
         FROM Levels
         LEFT JOIN LevelPlays ON Levels.id = LevelPlays.level_id
-        GROUP BY Levels.name, Levels.publisher
+        LEFT JOIN Users ON Users.id = Levels.publisher
+        GROUP BY Levels.id, Levels.name, Users.username
     """))
-    return result.fetchall()
+
+    response = list()
+    for id, name, publisher, plays in result.fetchall():
+        response.append({
+            "name": str(name),
+            "publisher": str(publisher),
+            "plays": int(plays),
+            "url": url_for('play_level', id=id),
+        })
+    return json.dumps(response)
 
 @app.route("/api/levels/<string:id>/data")
 def get_level_data(id: str):

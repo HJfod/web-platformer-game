@@ -6,3 +6,21 @@
     align-items: center;
     justify-content: center;
 }
+
+article.level {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+}
+article.level p {
+    margin: 0;
+}
+article.level .name {
+    font-weight: bold;
+}
+
+div.column {
+    display: flex;
+    flex-direction: column;
+}
