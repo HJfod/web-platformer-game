@@ -1,5 +1,5 @@
 
-DROP TABLE IF EXISTS Users, UnpublishedLevels, Levels, LevelPlays, Reviews;
+DROP TABLE IF EXISTS Users, UnpublishedLevels, Levels, LevelPlays, LevelClears, Reviews;
 
 CREATE TABLE Users (
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -28,6 +28,11 @@ CREATE TABLE UnpublishedLevels (
 );
 
 CREATE TABLE LevelPlays (
+    level_id INT REFERENCES Levels NOT NULL,
+    user_id INT REFERENCES Users NULL
+);
+
+CREATE TABLE LevelClears (
     level_id INT REFERENCES Levels NOT NULL,
     user_id INT REFERENCES Users NULL
 );

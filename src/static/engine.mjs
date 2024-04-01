@@ -111,8 +111,8 @@ document.addEventListener('mouseup', e => {
 });
 
 /**
- * @typedef {'block' | 'spike' | 'player' | 'particles'} ObjectType
- * @typedef {'deco' | 'solid' | 'deadly'} ObjectCollision
+ * @typedef {'block' | 'spike' | 'goal' | 'player' | 'particles'} ObjectType
+ * @typedef {'deco' | 'solid' | 'deadly' | 'goal'} ObjectCollision
  * @typedef {{ tick(delta: number): void, render(ctx: CanvasRenderingContext2D): void }} Renderable
  */
 
@@ -160,7 +160,11 @@ class GameObject {
          */
         this.opacity = 1;
         /**
-         * @type {'to-delete' | 'to-edit' | undefined}
+         * @type {number}
+         */
+        this.scale = 1;
+        /**
+         * @type {'to-delete' | 'to-edit' | 'moving' | undefined}
          */
         this.hovered = undefined;
         /**
@@ -233,6 +237,7 @@ class GameObject {
 
         ctx.translate(this.x + OBJECT_UNIT / 2, this.y + OBJECT_UNIT / 2);
         ctx.rotate(this.rotation);
+        ctx.scale(this.scale, this.scale);
         ctx.globalAlpha = this.opacity;
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
@@ -240,6 +245,7 @@ class GameObject {
         switch (this.hovered) {
             case 'to-delete': ctx.strokeStyle = '#f00'; break;
             case 'to-edit':   ctx.strokeStyle = '#0fa'; break;
+            case 'moving':    ctx.strokeStyle = '#0af'; break;
         }
         this.doRender(ctx);
 
@@ -351,6 +357,7 @@ class BlockObject extends GameObject {
         ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
         ctx.fill();
         ctx.stroke();
+        ctx.closePath();
     }
 }
 
@@ -381,6 +388,58 @@ class SpikeObject extends GameObject {
         ctx.lineTo(OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
         ctx.fill();
         ctx.stroke();
+        ctx.closePath();
+    }
+}
+
+/**
+ * The level end object. Touching this clears the level
+ */
+class GoalObject extends GameObject {
+    /**
+     * Construct a new end object
+     * @param {Level} level 
+     * @param {number} x 
+     * @param {number} y 
+     */
+    constructor(level, x, y) {
+        super('goal', level, x, y);
+    }
+
+    /** @type {GameObject['init']} */
+    init() {
+        this.collision = 'goal';
+        this.deletable = false;
+    }
+
+    /** @type {GameObject['hitbox']} */
+    hitbox() {
+        return new Hitbox(0, 0, OBJECT_UNIT, OBJECT_UNIT, this.rotation);
+    }
+
+    /** @type {GameObject['tick']} */
+    tick(delta) {
+        this.rotation += 0.03 * delta;
+    }
+    
+    /** @type {GameObject['doRender']} */
+    doRender(ctx) {
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        if (this.hovered === undefined) {
+            const gradient = ctx.createLinearGradient(0, OBJECT_UNIT / 2, 0, -OBJECT_UNIT);
+            gradient.addColorStop(0, "rgba(0, 255, 0, 1)");
+            gradient.addColorStop(1, "rgba(0, 0, 255, 0.6)");
+            ctx.strokeStyle = gradient;
+        }
+        for (let i = 0; i < Math.PI * 2; i += Math.PI / 4) {
+            ctx.beginPath();
+            ctx.rotate(i);
+            ctx.moveTo(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
+            ctx.bezierCurveTo(-OBJECT_UNIT / 4, -OBJECT_UNIT / 2, OBJECT_UNIT / 10, -OBJECT_UNIT / 4, 0, 0);
+            ctx.stroke();
+            ctx.closePath();
+        }
     }
 }
 
@@ -424,6 +483,10 @@ class PlayerObject extends GameObject {
          * @type {number | undefined}
          */
         this.collidingBlockRight = undefined;
+        /**
+         * @type {Vec2 | undefined}
+         */
+        this.winning = undefined;
 
         this.deletable = false;
     }
@@ -455,24 +518,28 @@ class PlayerObject extends GameObject {
                     switch (obj_.collision) {
                         case 'solid': this.collidingBlockBelow = obj.top(); break;
                         case 'deadly': this.kill(); break;
+                        case 'goal': this.win(obj.x, obj.y); break;
                     }
                 }
                 else if (Math.abs(player.left() - obj.right() + OBJ_HITBOX_SIZE) < OBJ_HITBOX_SIZE && sameY) {
                     switch (obj_.collision) {
                         case 'solid': this.collidingBlockLeft = obj.right();break;
                         case 'deadly': this.kill(); break;
+                        case 'goal': this.win(obj.x, obj.y); break;
                     }
                 }
                 else if (Math.abs(player.right() - obj.left() - OBJ_HITBOX_SIZE) < OBJ_HITBOX_SIZE && sameY) {
                     switch (obj_.collision) {
                         case 'solid': this.collidingBlockRight = obj.left();break;
                         case 'deadly': this.kill(); break;
+                        case 'goal': this.win(obj.x, obj.y); break;
                     }
                 }
                 else if (Math.abs(player.top() - obj.bottom() - OBJ_HITBOX_SIZE) < OBJ_HITBOX_SIZE && sameX) {
                     switch (obj_.collision) {
                         case 'solid': this.collidingBlockAbove = obj.bottom();break;
                         case 'deadly': this.kill(); break;
+                        case 'goal': this.win(obj.x, obj.y); break;
                     }
                 }
             }
@@ -505,16 +572,31 @@ class PlayerObject extends GameObject {
         this.speed.x = 0;
         this.speed.y = 0;
         this.rotation = 0;
+        this.scale = 1;
         this.collidingBlockBelow = undefined;
         this.collidingBlockAbove = undefined;
         this.collidingBlockLeft  = undefined;
         this.collidingBlockRight = undefined;
+        this.winning = undefined;
     }
     kill() {
         if (this.level) {
             new ParticleObject(this.level, 15, 60, "#f07", this.x, this.y);
         }
         this.level?.reset();
+    }
+    /**
+     * @param {number} x 
+     * @param {number} y 
+     */
+    win(x, y) {
+        this.acc = { x: 0, y: 0 };
+        this.speed = { x: 0, y: 0 };
+        this.winning = { x, y };
+        if (this.level) {
+            new ParticleObject(this.level, 25, 90, "#0af", x, y);
+            this.level.win();
+        }
     }
 
     /** @type {GameObject['hitbox']} */
@@ -524,7 +606,26 @@ class PlayerObject extends GameObject {
 
     /** @type {GameObject['tick']} */
     tick(delta) {
-        if (!this.level || this.level.editorMode) return;
+        if (!this.level || (this.level.editorMode && !this.level.playtesting)) return;
+        if (this.winning !== undefined) {
+            if (this.x > this.winning.x) {
+                this.x -= 1 * delta;
+            }
+            if (this.x < this.winning.x) {
+                this.x += 1 * delta;
+            }
+            if (this.y > this.winning.y) {
+                this.y -= 1 * delta;
+            }
+            if (this.y < this.winning.y) {
+                this.y += 1 * delta;
+            }
+            if (this.scale > 0) {
+                this.scale -= 0.03 * delta;
+            }
+            this.rotation -= 0.03 * delta;
+            return;
+        }
 
         this.checkCollisions();
 
@@ -646,17 +747,18 @@ class PlayerObject extends GameObject {
         gradient.addColorStop(1, "#07f");
 
         ctx.fillStyle = gradient;
-        ctx.globalAlpha = this.level?.editorMode ? 0.3 : 1;
+        ctx.globalAlpha = (this.level?.editorMode && !this.level?.playtesting) ? 0.3 : 1;
         ctx.beginPath();
         ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
         ctx.fill();
         ctx.stroke();
+        ctx.closePath();
     }
 }
 
 /**
  * @typedef {{ x: number, y: number, type: ObjectType }} LevelDataObject
- * @typedef {{ playerX: number | undefined, playerY: number | undefined, objects: LevelDataObject[] | undefined }} LevelData
+ * @typedef {{ playerX: number | undefined, playerY: number | undefined, endX: number | undefined, endY: number | undefined, objects: LevelDataObject[] | undefined }} LevelData
  * @typedef {'place' | 'edit' | 'eraser'} EditorTool
  */
 
@@ -669,8 +771,9 @@ class Level {
      * Load a new level from data into a canvas
      * @param {HTMLCanvasElement} canvas 
      * @param {string} id
+     * @param {boolean} editor
      */
-    constructor(canvas, id) {
+    constructor(canvas, id, editor) {
         /**
          * @type {string}
          */
@@ -696,6 +799,10 @@ class Level {
          */
         this.player = undefined;
         /**
+         * @type {GoalObject | undefined}
+         */
+        this.goal = undefined;
+        /**
          * @type {LevelData | undefined}
          */
         this.data = undefined;
@@ -706,7 +813,11 @@ class Level {
         /**
          * @type {boolean}
          */
-        this.editorMode = false;
+        this.editorMode = editor;
+        /**
+         * @type {boolean}
+         */
+        this.playtesting = false;
         /**
          * @type {GameObject | undefined}
          */
@@ -732,9 +843,13 @@ class Level {
          */
         this.editorHasUnsavedChanges = false;
         /**
-         * @type {Element | undefined}
+         * @type {((hasUnsavedChanges: boolean) => void) | undefined}
          */
-        this.editorUnsavedChangesNotification = undefined;
+        this.onEditorChange = undefined;
+        /**
+         * @type {((playtesting: boolean) => void) | undefined}
+         */
+        this.onEditorPlaytest = undefined;
 
         this.scheduleRender(canvas);
 
@@ -784,6 +899,13 @@ class Level {
     }
 
     /**
+     * @returns {[number, number]}
+     */
+    endOrig() {
+        return [this.data?.endX ?? this.width / 2 - OBJECT_UNIT * 5, this.data?.endY ?? this.height / 2]
+    }
+
+    /**
      * @param {ObjectType} type 
      * @param {number} x 
      * @param {number} y 
@@ -799,7 +921,7 @@ class Level {
                 return new SpikeObject(type, this, x, y);
             };
 
-            case 'player': {
+            case 'player': case 'goal': case 'particles': {
                 console.error(`Illegal object type ${type}`);
                 return undefined;
             };
@@ -819,6 +941,9 @@ class Level {
         const [x, y] = this.playerOrig();
         this.player = new PlayerObject(this, x, y);
 
+        const [ex, ey] = this.endOrig();
+        this.goal = new GoalObject(this, ex, ey);
+
         data.objects?.forEach(obj => this.createObject(obj.type, obj.x, obj.y));
     }
 
@@ -827,6 +952,15 @@ class Level {
             const [x, y] = this.playerOrig();
             this.player.reset(x, y);
             this.editorClickedObj = undefined;
+        }
+    }
+    win() {
+        if (this.editorMode) {
+            this.setPlaytesting(false);
+        }
+        else {
+            this.errorMessage = 'U R WINNER!';
+            fetch(`/api/levels/${this.id}/mark-as-cleared`, { method: 'POST' });
         }
     }
 
@@ -892,11 +1026,16 @@ class Level {
                             hoveredObj.removeThis();
                         }
                     }
-                    else if (this.editorTool == 'edit') {
-                        // todo
-                    }
                     this.editorClickedObj = hoveredObj;
                     this.dirtify();
+                }
+    
+                if (inputManager.mouseDown && this.editorClickedObj) {
+                    if (this.editorTool == 'edit') {
+                        this.editorClickedObj.hovered = 'moving';
+                        this.editorClickedObj.x = gridX;
+                        this.editorClickedObj.y = gridY;
+                    }
                 }
             }
 
@@ -910,7 +1049,7 @@ class Level {
     /** @type {Renderable['render']} */
     render(ctx) {
         // Render grid in editor
-        if (this.editorMode && this.editorShowGrid) {
+        if (this.editorMode && !this.playtesting && this.editorShowGrid) {
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.lineWidth = 0.5;
             for (let x = OBJECT_UNIT; x < this.width; x += OBJECT_UNIT) {
@@ -930,7 +1069,7 @@ class Level {
         ctx.fillRect(0, 0, OBJECT_UNIT, this.height);
         ctx.fillRect(this.width - OBJECT_UNIT, 0, OBJECT_UNIT, this.height);
 
-        if (!this.data) {
+        if (!this.data || this.errorMessage) {
             ctx.resetTransform();
             ctx.font = '2rem sans-serif';
             ctx.textBaseline = 'middle';
@@ -948,13 +1087,18 @@ class Level {
 
     dirtify() {
         this.editorHasUnsavedChanges = true;
-        this.editorUnsavedChangesNotification?.classList.remove('hidden');
+        if (this.onEditorChange) {
+            this.onEditorChange(true);
+        }
     }
     updateData() {
         if (!this.editorMode || !this.data || !this.player) return;
 
         this.data.playerX = this.player.x;
         this.data.playerY = this.player.y;
+
+        this.data.endX = this.goal?.x;
+        this.data.endY = this.goal?.y;
 
         this.data.objects = [];
         for (const obj of this.objects) {
@@ -1002,7 +1146,9 @@ class Level {
                 throw msg.reason;
             }
             this.editorHasUnsavedChanges = false;
-            this.editorUnsavedChangesNotification?.classList.add('hidden');
+            if (this.onEditorChange) {
+                this.onEditorChange(false);
+            }
         }
         catch(e) {
             alert(`Error saving level: ${e}`);
@@ -1018,13 +1164,16 @@ class Level {
     /**
      * @param {boolean} mode 
      */
-    setEditorMode(mode) {
-        this.editorMode = mode;
+    setPlaytesting(mode) {
+        this.playtesting = mode;
         this.reset();
+        if (this.onEditorPlaytest) {
+            this.onEditorPlaytest(mode);
+        }
     }
-    toggleEditorMode() {
-        this.setEditorMode(!this.editorMode);
-        return this.editorMode;
+    toggleEditorPlaytesting() {
+        this.setPlaytesting(!this.playtesting);
+        return this.playtesting;
     }
     /**
      * @param {EditorTool} tool 
@@ -1054,10 +1203,16 @@ class Level {
         this.editorSnapToGrid = align;
     }
     /**
-     * @param {Element | undefined} target 
+     * @param {((hasUnsavedChanges: boolean) => void) | undefined} target 
      */
-    setEditorUnsavedNotification(target) {
-        this.editorUnsavedChangesNotification = target;
+    setEditorOnChange(target) {
+        this.onEditorChange = target;
+    }
+    /**
+     * @param {((playtesting: boolean) => void) | undefined} target 
+     */
+    setEditorOnPlaytest(target) {
+        this.onEditorPlaytest = target;
     }
 }
 
@@ -1068,7 +1223,7 @@ class Level {
  * @returns {Promise<Level>}
  */
 export async function loadLevelByID(canvas, id) {
-    const level = new Level(canvas, id);
+    const level = new Level(canvas, id, false);
 
     const res = await fetch(`/api/levels/${id}/data`);
     const data = /** @type {LevelData} */ (await res.json());
@@ -1078,8 +1233,7 @@ export async function loadLevelByID(canvas, id) {
     }
     else {
         level.loadData(data);
-        // Wait a bit before marking the level as played
-        setTimeout(_ => fetch(`/api/levels/${id}/mark-as-played`, { method: 'POST' }), 15000);
+        fetch(`/api/levels/${id}/mark-as-played`, { method: 'POST' });
         return level;
     }
 }
@@ -1091,8 +1245,7 @@ export async function loadLevelByID(canvas, id) {
  * @returns {Promise<Level>}
  */
 export async function loadEditorByID(canvas, id) {
-    const level = new Level(canvas, id);
-    level.setEditorMode(true);
+    const level = new Level(canvas, id, true);
 
     const res = await fetch(`/api/levels/wip/${id}/data`);
     const data = /** @type {LevelData} */ (await res.json());

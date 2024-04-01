@@ -78,19 +78,23 @@ def handle_error(e: HTTPException):
 @app.route("/api/levels")
 def get_all_levels():
     result = db.session.execute(text("""
-        SELECT Levels.id, Levels.name, Users.id, Users.username, COUNT(LevelPlays.user_id)
+        SELECT Levels.id, Levels.name, Users.id, Users.username,
+            (SELECT COUNT(*) FROM LevelPlays WHERE Levels.id = LevelPlays.level_id),
+            (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id)
         FROM Levels
         LEFT JOIN LevelPlays ON Levels.id = LevelPlays.level_id
+        LEFT JOIN LevelClears ON Levels.id = LevelClears.level_id
         LEFT JOIN Users ON Users.id = Levels.publisher
         GROUP BY Levels.id, Levels.name, Users.id, Users.username
     """))
 
     response = list()
-    for id, name, user_id, publisher, plays in result.fetchall():
+    for id, name, user_id, publisher, plays, clears in result.fetchall():
         response.append({
             "name": str(name),
             "publisher": str(publisher),
             "plays": int(plays),
+            "clears": int(clears),
             "play_url": url_for('play_level', id=id),
         })
     return json.dumps(response)
@@ -101,9 +105,10 @@ def get_users_levels():
         return make_error_response(403, 'You need to log in to get your levels')
 
     result = db.session.execute(text("""
-        SELECT Levels.id, Levels.name, Users.username, COUNT(LevelPlays.user_id)
+        SELECT Levels.id, Levels.name, Users.username,
+            (SELECT COUNT(*) FROM LevelPlays WHERE Levels.id = LevelPlays.level_id),
+            (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id)
         FROM Levels
-        LEFT JOIN LevelPlays ON Levels.id = LevelPlays.level_id
         LEFT JOIN Users ON Users.id = Levels.publisher
         WHERE Users.id = :user_id
         GROUP BY Levels.id, Levels.name, Users.id, Users.username
@@ -112,11 +117,12 @@ def get_users_levels():
     })
 
     response = list()
-    for id, name, publisher, plays in result.fetchall():
+    for id, name, publisher, plays, clears in result.fetchall():
         response.append({
             "name": str(name),
             "publisher": str(publisher),
             "plays": int(plays),
+            "clears": int(clears),
             "play_url": url_for('play_level', id=id),
         })
     return json.dumps(response)
@@ -161,6 +167,19 @@ def get_users_wip_levels():
 def mark_level_as_played(id: int):
     db.session.execute(text("""
         INSERT INTO LevelPlays (level_id, user_id)
+        VALUES (:level_id, :user_id)
+    """), {
+        "level_id": id,
+        "user_id": session["user_id"]
+    })
+    db.session.commit()
+
+    return {}, 200
+
+@app.route("/api/levels/<int:id>/mark-as-cleared", methods=["POST"])
+def mark_level_as_cleared(id: int):
+    db.session.execute(text("""
+        INSERT INTO LevelClears (level_id, user_id)
         VALUES (:level_id, :user_id)
     """), {
         "level_id": id,

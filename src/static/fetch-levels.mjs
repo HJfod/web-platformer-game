@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @typedef {{ name: string, publisher: string, plays: number, play_url: string, edit_url?: string }} Level
+ * @typedef {{ name: string, publisher: string, plays: number, clears: number, play_url: string, edit_url?: string }} Level
  * @typedef {{ name: string, url: string }} UnpublishedLevel
  */
 
@@ -38,7 +38,7 @@ async function loadLevelsTo(target, my = false) {
 
         const plays = document.createElement('p');
         plays.classList.add('play-count');
-        plays.innerText = `${level.plays} plays`;
+        plays.innerText = `${level.plays} plays, ${level.clears} clears`;
         column.appendChild(plays);
 
         article.appendChild(column);
