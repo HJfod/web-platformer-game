@@ -184,7 +184,7 @@ def create_new_level():
     return { "url": url_for('edit_level', id=id) }, 200
 
 @app.route("/api/levels/wip/<int:id>/update", methods=["POST"])
-def get_users_wip_level_update_name(id: int):
+def get_users_wip_level_update(id: int):
     if not "user_id" in session:
         return make_error_response(403, 'You need to log in to create levels')
 
@@ -199,6 +199,7 @@ def get_users_wip_level_update_name(id: int):
         "user_id": session["user_id"],
         "level_id": id,
     })
+    db.session.commit()
 
     return {}, 200
 
