@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy.exc import IntegrityError
+from wonderwords import RandomWord
 import json
 import mimetypes
 
@@ -160,12 +161,21 @@ def create_new_level():
     if not "user_id" in session:
         return make_error_response(403, 'You need to log in to create levels')
 
+    s = RandomWord()
+
+    name = ' '.join(s.random_words(4, word_max_length=6))
+    while db.session.execute(
+        text("SELECT name FROM UnpublishedLevels WHERE creator = :user_id AND name = :name"),
+        { "user_id": session["user_id"], "name": name }
+    ).fetchone() != None:
+        name = ' '.join(s.random_words(4, word_max_length=6))
+
     id = db.session.execute(text("""
         INSERT INTO UnpublishedLevels (creator, name, data)
         VALUES (:creator, :name, :data)
         RETURNING id
     """), {
-        "name": "New level",
+        "name": name,
         "creator": session["user_id"],
         "data": json.dumps({})
     }).fetchone()[0]

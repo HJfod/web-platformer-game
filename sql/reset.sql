@@ -12,14 +12,14 @@ CREATE TABLE Users (
 CREATE TABLE UnpublishedLevels (
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     creator INT REFERENCES Users,
-    name TEXT NOT NULL CHECK (LENGTH(name) <= 25),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 30),
     data JSON NOT NULL,
     CONSTRAINT creator_may_only_have_one_created_level_of_same_name UNIQUE (name, creator)
 );
 
 CREATE TABLE Levels (
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    name TEXT NOT NULL CHECK (LENGTH(name) <= 25),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 30),
     publisher INT REFERENCES Users NOT NULL,
     published_at TIMESTAMP DEFAULT current_timestamp,
     data JSON NOT NULL,
