@@ -35,6 +35,28 @@ a:hover {
     cursor: pointer;
 }
 
+input {
+    border-radius: .25rem;
+    border: #444 .1rem solid;
+    background: linear-gradient(rgb(204, 204, 189), rgb(175, 170, 166));
+    padding-top: .25rem;
+    padding-bottom: .25rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    text-decoration: none;
+    color: #000;
+    font-family: 'Poppins', sans-serif;
+}
+input:focus {
+    border: #423509 .1rem solid;
+    background: linear-gradient(rgb(192, 192, 122), rgb(175, 144, 121));
+    outline: none;
+}
+input:disabled {
+    color: #666;
+    border-color: #888;
+}
+
 .hidden {
     display: none;
 }
