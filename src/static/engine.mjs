@@ -1078,6 +1078,8 @@ export async function loadLevelByID(canvas, id) {
     }
     else {
         level.loadData(data);
+        // Wait a bit before marking the level as played
+        setTimeout(_ => fetch(`/api/levels/${id}/mark-as-played`, { method: 'POST' }), 15000);
         return level;
     }
 }

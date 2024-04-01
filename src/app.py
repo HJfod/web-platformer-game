@@ -157,6 +157,19 @@ def get_users_wip_levels():
             })
     return json.dumps(response)
 
+@app.route("/api/levels/<int:id>/mark-as-played", methods=["POST"])
+def mark_level_as_played(id: int):
+    db.session.execute(text("""
+        INSERT INTO LevelPlays (level_id, user_id)
+        VALUES (:level_id, :user_id)
+    """), {
+        "level_id": id,
+        "user_id": session["user_id"]
+    })
+    db.session.commit()
+
+    return {}, 200
+
 @app.route("/api/levels/wip", methods=["POST"])
 def create_new_level():
     if not "user_id" in session:

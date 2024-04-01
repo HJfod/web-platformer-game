@@ -29,7 +29,7 @@ CREATE TABLE UnpublishedLevels (
 
 CREATE TABLE LevelPlays (
     level_id INT REFERENCES Levels NOT NULL,
-    user_id INT REFERENCES Users
+    user_id INT REFERENCES Users NULL
 );
 
 CREATE TABLE Reviews (
