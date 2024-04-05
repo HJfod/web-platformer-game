@@ -24,6 +24,7 @@ Anyone can play maps without needing to log in. Users with an account can also c
  * [x] Game engine
  * [x] Basic level editor
  * [x] Uploading & un-uploading levels
+ * [ ] Level reviews
  * [ ] Player sprite & color customizability options
  * [ ] Polish in-game graphics
  * [ ] Polish level editor UI/UX
