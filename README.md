@@ -3,9 +3,9 @@
 :point_right: A simple web platformer game for an university course, inspired by games like [Geometry Dash](https://www.robtopgames.com/) and [The Impossible Game](https://impossible.game/). 
 
 <p>
-    <img src="/assets/preview-2-menu.png" width="200" alt="Image of the game's main menu, showing a list of levels to play"></img>
-    <img src="/assets/preview-2-play.png" width="200" alt="Image of the game's gameplay, showing the player cube standing on blocks"></img>
-    <img src="/assets/preview-2-editor.png" width="200" alt="Image of the game's editor, showing early controls to create & modify levels"></img>
+    <img src="/assets/preview-2-menu.png" width="300" alt="Image of the game's main menu, showing a list of levels to play"></img>
+    <img src="/assets/preview-2-play.png" width="300" alt="Image of the game's gameplay, showing the player cube standing on blocks"></img>
+    <img src="/assets/preview-2-editor.png" width="300" alt="Image of the game's editor, showing early controls to create & modify levels"></img>
 </p>
 
 > Screenshots of an early version of the game, showing the main menu, gameplay, and the level editor
