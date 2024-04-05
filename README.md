@@ -16,16 +16,16 @@ Anyone can play maps without needing to log in. Users with an account can also c
 
 ## :zap: Running a local copy
 
-> :zap: **Quick Instructions**: Needs **Python** with **Flask** installed. Use `python -m flask --app src/app.py run` to run the app in development mode.
+> :zap: **Quick Instructions**: Use `pip install -r requirements.txt` to setup, then `python -m flask --app src/app.py run` to run the app in development mode.
 
 These are the instructions for running a **local server** of the game. This means that the game connects to a **local database**, so all maps and reviews are stored only on your local computer.
 
 1. Install [Python](https://www.python.org/downloads/).
 
-2. After getting Python, install the **Flask** web development framework by running `pip install flask`.
+2. Clone the repository via Git.
 
-3. Clone the repository via Git.
+3. Install the required Python modules by running `pip install -r requirements.txt` in the project directory.
 
-4. Make sure your Postgres service is running. Initialize the Postgres database by running `postgres -U <your_user_name> -f sql/setup.sql`.
+4. Make sure your Postgres service is running. Initialize the Postgres database by running `postgres -U <your_user_name> -f sql/reset.sql`.
 
 5. You can then run a local server by running `python -m flask --app src/app.py run --debug`. This starts a new web server at [http://127.0.0.1:5000] by default.
