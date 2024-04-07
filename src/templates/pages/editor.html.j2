@@ -79,6 +79,31 @@
             const level = await loadEditorByID(canvas, '{{ level_id }}');
 
             const playtestBtn = document.querySelector('#playtest');
+            const nameInput = /** @type {HTMLInputElement} */ (document.querySelector('#level-name'));
+
+            async function updateName() {
+                try {
+                    const res = await fetch('/api/levels/wip/{{ level_id }}/update-metadata', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: nameInput.value,
+                        }),
+                        headers: {
+                            'Content-type': 'application/json; charset=UTF-8'
+                        }
+                    });
+                    const msg = await res.json();
+                    if (!res.ok) {
+                        throw msg.reason;
+                    }
+                    originalLevelName = nameInput.value;
+                }
+                catch(e) {
+                    // Reset level name
+                    nameInput.value = originalLevelName;
+                    throw e;
+                }
+            }
 
             level.setEditorOnChange(changed => document.querySelector('#unsaved-notification').classList.toggle('hidden', !changed));
             level.setEditorOnPlaytest(playtesting => playtestBtn.innerText = playtesting ? 'Stop playtest' : 'Playtest');
@@ -90,25 +115,27 @@
                 level.toggleEditorPlaytesting();
             });
             document.querySelector('#delete-level')?.addEventListener('click', async e => {
-                if (confirm('Delete project {{ level_name }}? This does not unpublish it!')) {
+                if (confirm(`Delete project ${originalLevelName}? This does not unpublish it!`)) {
                     await level.serverAction('delete');
                     window.location.href = "{{ url_for('userpage') }}";
                 }
             });
             document.querySelector('#unpublish-level')?.addEventListener('click', async e => {
-                if (confirm('Unpublish {{ level_name }}?')) {
+                if (confirm(`Unpublish ${originalLevelName}?`)) {
                     await level.serverAction('unpublish');
                     window.location.reload();
                 }
             });
             document.querySelector('#update-level')?.addEventListener('click', async e => {
-                if (confirm('Update {{ level_name }}?')) {
+                try { await updateName(); } catch {}
+                if (confirm(`Update ${originalLevelName}?`)) {
                     await level.serverAction('update');
                     window.location.reload();
                 }
             });
             document.querySelector('#publish-level')?.addEventListener('click', async e => {
-                if (confirm('Publish {{ level_name }}? You cannot change the name afterwards!')) {
+                try { await updateName(); } catch {}
+                if (confirm(`Publish ${originalLevelName}? You cannot change the name afterwards!`)) {
                     await level.serverAction('publish');
                     window.location.reload();
                 }
@@ -135,31 +162,14 @@
                 level.setEditorGridAlign(e.currentTarget.checked);
             });
 
-            const nameInput = /** @type {HTMLInputElement} */ (document.querySelector('#level-name'));
-
             let originalLevelName = '{{ level_name }}';
             document.querySelector('#update-name').addEventListener('click', async e => {
                 try {
-                    const res = await fetch('/api/levels/wip/{{ level_id }}/update-metadata', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: nameInput.value,
-                        }),
-                        headers: {
-                            'Content-type': 'application/json; charset=UTF-8'
-                        }
-                    });
-                    const msg = await res.json();
-                    if (!res.ok) {
-                        throw msg.reason;
-                    }
-                    originalLevelName = nameInput.value;
+                    await updateName();
                     alert('Name updated!');
                 }
                 catch(e) {
-                    // Reset level name
-                    nameInput.value = originalLevelName;
-                    alert(`Error updating name: ${e}`);
+                    alert(`Unable to update name: ${e}`);
                 }
             });
         </script>
