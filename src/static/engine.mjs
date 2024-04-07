@@ -883,6 +883,16 @@ class Level {
 
             // Render every frame you can
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            const gradient = ctx.createLinearGradient(0, this.height, 0, 0);
+            gradient.addColorStop(0, "#9cf");
+            gradient.addColorStop(1, "#afe");
+    
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Render the level
             this.render(ctx);
 
             prevFrame = frameStamp;
