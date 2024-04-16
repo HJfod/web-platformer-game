@@ -87,16 +87,16 @@ const inputManager = {
 };
 document.addEventListener('keydown', e => {
     switch (e.code) {
-        case 'ArrowLeft':  case 'KeyA':                  inputManager.left = true; break;
-        case 'ArrowRight': case 'KeyD':                  inputManager.right = true; break;
-        case 'ArrowUp':    case 'KeyW': case 'KeySpace': inputManager.up = true; break;
+        case 'ArrowLeft':  case 'KeyA':               inputManager.left = true; break;
+        case 'ArrowRight': case 'KeyD':               inputManager.right = true; break;
+        case 'ArrowUp':    case 'KeyW': case 'Space': inputManager.up = true; break;
     }
 });
 document.addEventListener('keyup', e => {
     switch (e.code) {
-        case 'ArrowLeft':  case 'KeyA':                  inputManager.left = false; break;
-        case 'ArrowRight': case 'KeyD':                  inputManager.right = false; break;
-        case 'ArrowUp':    case 'KeyW': case 'KeySpace': inputManager.up = false; break;
+        case 'ArrowLeft':  case 'KeyA':               inputManager.left = false; break;
+        case 'ArrowRight': case 'KeyD':               inputManager.right = false; break;
+        case 'ArrowUp':    case 'KeyW': case 'Space': inputManager.up = false; break;
     }
 });
 document.addEventListener('mousemove', e => {
