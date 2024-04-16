@@ -111,7 +111,7 @@ document.addEventListener('mouseup', e => {
 });
 
 /**
- * @typedef {'block' | 'spike' | 'goal' | 'player' | 'particles'} ObjectType
+ * @typedef {'block' | 'spike' | 'ground-spike' | 'goal' | 'player' | 'particles'} ObjectType
  * @typedef {'deco' | 'solid' | 'deadly' | 'goal'} ObjectCollision
  * @typedef {{ tick(delta: number): void, render(ctx: CanvasRenderingContext2D): void }} Renderable
  */
@@ -388,6 +388,40 @@ class SpikeObject extends GameObject {
         ctx.lineTo(OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
         ctx.fill();
         ctx.stroke();
+        ctx.closePath();
+    }
+}
+
+/**
+ * A ground spike object. Deadlifies the floor
+ */
+class GroundSpikeObject extends GameObject {
+    /** @type {GameObject['init']} */
+    init() {
+        this.collision = 'deadly';
+    }
+
+    /** @type {GameObject['hitbox']} */
+    hitbox() {
+        return new Hitbox(OBJECT_UNIT / 4, 0, OBJECT_UNIT / 2, OBJECT_UNIT / 3, this.rotation);
+    }
+    
+    /** @type {GameObject['doRender']} */
+    doRender(ctx) {
+        const gradient = ctx.createLinearGradient(0, -OBJECT_UNIT / 6, 0, -OBJECT_UNIT);
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+        gradient.addColorStop(0, "rgba(0, 0, 0, 1.0)");
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
+        ctx.lineTo(-OBJECT_UNIT / 2, -OBJECT_UNIT / 6);
+        ctx.lineTo(-OBJECT_UNIT / 4, 0);
+        ctx.lineTo(0, -OBJECT_UNIT / 6);
+        ctx.lineTo(+OBJECT_UNIT / 4, 0);
+        ctx.lineTo(+OBJECT_UNIT / 2, -OBJECT_UNIT / 6);
+        ctx.lineTo(+OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
+        ctx.fill();
         ctx.closePath();
     }
 }
@@ -935,6 +969,10 @@ class Level {
                 return new SpikeObject(type, this, x, y);
             };
 
+            case 'ground-spike': {
+                return new GroundSpikeObject(type, this, x, y);
+            };
+
             case 'player': case 'goal': case 'particles': {
                 console.error(`Illegal object type ${type}`);
                 return undefined;
@@ -1181,6 +1219,9 @@ class Level {
      */
     setPlaytesting(mode) {
         this.playtesting = mode;
+        if (mode) {
+            this.updateData();
+        }
         this.reset();
         if (this.onEditorPlaytest) {
             this.onEditorPlaytest(mode);
