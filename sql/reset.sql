@@ -40,7 +40,8 @@ CREATE TABLE LevelClears (
 CREATE TABLE Reviews (
     level_id INT REFERENCES Levels NOT NULL,
     user_id INT REFERENCES Users NOT NULL,
-    rating INT NOT NULL CHECK(1 <= rating AND rating <= 5),
+    rating INT NOT NULL CHECK(0 <= rating AND rating <= 5),
     body TEXT NOT NULL CHECK (LENGTH(body) <= 200),
+    posted_at TIMESTAMP DEFAULT current_timestamp,
     CONSTRAINT only_one_review_per_level_per_user UNIQUE (level_id, user_id)
 );

@@ -2,14 +2,110 @@
 {% extends "layouts/page.html.j2" %}
 
 {% set title = "Play level (" ~ level_id ~ ")" %}
+{% set scripts = ['fetch-reviews.mjs'] %}
 
 {% block content %}
-    <canvas width="704" height="704" style="background: #aaa;"></canvas>
+    <div class="row wide-gap">
+        <div class="canvas-with-overlay">
+            <canvas width="704" height="704" style="background: #aaa;">
+                <p>pls enable javascript to play the game :(</p>
+            </canvas>
+            <div class="overlay hidden">
+                <div id="level-finish" class="column">
+                    <img
+                        src="{{ url_for('static', filename='urwinner.png') }}"
+                        alt="you are WINNER"
+                        height="175"
+                        class="title"
+                    >
+                    <div class="controls column centered">
+                        <a href="{{ url_for('index') }}">Home</a>
+                        <hr>
+                        {% if session.user_id %}
+                            <fieldset class="stars">
+                                <legend>Give this level a score!</legend>
+                                <div class="list">
+                                    <span>{% include 'star.svg.j2' %}</span>
+                                    <input type="radio" name="score" value="5">
+                                    {% include 'star.svg.j2' %}
+                                    <input type="radio" name="score" value="4">
+                                    {% include 'star.svg.j2' %}
+                                    <input type="radio" name="score" value="3">
+                                    {% include 'star.svg.j2' %}
+                                    <input type="radio" name="score" value="2">
+                                    {% include 'star.svg.j2' %}
+                                    <input type="radio" name="score" value="1">
+                                    {% include 'star.svg.j2' %}
+                                    <input type="radio" name="score" value="0" checked>
+                                    {% include 'star.svg.j2' %}
+                                </div>
+                                <p id="rating-name"></p>
+                            </fieldset>
+                            <textarea id="review-area" placeholder="Write a review"></textarea>
+                            <a id="post-review">Submit Review</a>
+                        {% else %}
+                            <textarea disabled placeholder="Log in to post reviews!"></textarea>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="column">
+            <h2>Reviews</h2>
+            <div class="reviews-list" data-level-id="{{ level_id }}" data-user-id="{{ session.user_id }}">
+                <p>Loading reviews...</p>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         import { loadLevelByID } from "{{ url_for('static', filename='engine.mjs') }}";
 
         const canvas = document.querySelector('canvas');
         loadLevelByID(canvas, '{{ level_id }}');
+
+        function updateRatingLabel() {
+            const label = document.querySelector('#rating-name');
+            const value = document.querySelector('input[name="score"]:checked').value;
+            switch (value) {
+                default:  label.innerText = 'what?????';        break;
+                case '0': label.innerText = '(0) Terrible >:('; break;
+                case '1': label.innerText = '(1) Bad :(';       break;
+                case '2': label.innerText = '(2) Ehhh :/';      break;
+                case '3': label.innerText = '(3) Aight :|';     break;
+                case '4': label.innerText = '(4) Good :)';      break;
+                case '5': label.innerText = '(5) Amazing :D';   break;
+            }
+        }
+        document.querySelectorAll('input[name="score"]').forEach(i => {
+            i.addEventListener('change', e => {
+                updateRatingLabel();
+            });
+        });
+        updateRatingLabel();
+        
+        document.querySelector('#post-review').addEventListener('click', async e => {
+            try {
+                const res = await fetch('/api/levels/{{ level_id }}/reviews', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        rating: parseInt(document.querySelector('input[name="score"]:checked').value),
+                        body: document.querySelector('#review-area').value,
+                    }),
+                    headers: {
+                        'Content-type': 'application/json; charset=UTF-8'
+                    }
+                });
+                const msg = await res.json();
+                if (!res.ok) {
+                    throw msg.reason;
+                }
+                window.location.reload();
+            }
+            catch(e) {
+                alert(`Error posting review: ${e}`);
+            }
+        });
     </script>
 {% endblock %}

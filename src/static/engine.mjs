@@ -850,6 +850,10 @@ class Level {
          * @type {((playtesting: boolean) => void) | undefined}
          */
         this.onEditorPlaytest = undefined;
+        /**
+         * @type {boolean}
+         */
+        this.winning = false;
 
         this.scheduleRender(canvas);
 
@@ -969,7 +973,8 @@ class Level {
             this.setPlaytesting(false);
         }
         else {
-            this.errorMessage = 'U R WINNER!';
+            this.winning = true;
+            this.canvas.parentElement?.querySelector('.overlay')?.classList.remove('hidden');
             fetch(`/api/levels/${this.id}/mark-as-cleared`, { method: 'POST' });
         }
     }

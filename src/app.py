@@ -32,6 +32,11 @@ class UpdateLevelMetadata:
     name: str
 
 @dataclass
+class Review:
+    rating: int
+    body: str
+
+@dataclass
 class Login:
     username: str
     password: str
@@ -78,21 +83,24 @@ def handle_error(e: HTTPException):
 @app.route("/api/levels")
 def get_all_levels():
     result = db.session.execute(text("""
-        SELECT Levels.id, Levels.name, Users.id, Users.username,
+        SELECT Levels.id, Levels.name, Levels.published_at, Users.id, Users.username,
             (SELECT COUNT(*) FROM LevelPlays WHERE Levels.id = LevelPlays.level_id),
-            (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id)
+            (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id),
+            (SELECT COUNT(*) FROM Reviews WHERE Levels.id = Reviews.level_id)
         FROM Levels
         LEFT JOIN Users ON Users.id = Levels.publisher
-        GROUP BY Levels.id, Levels.name, Users.id, Users.username
+        GROUP BY Levels.id, Levels.name, Levels.published_at, Users.id, Users.username
     """))
 
     response = list()
-    for id, name, user_id, publisher, plays, clears in result.fetchall():
+    for id, name, published_at, user_id, publisher, plays, clears, reviews in result.fetchall():
         response.append({
             "name": str(name),
             "publisher": str(publisher),
+            "published_at": str(published_at),
             "plays": int(plays),
             "clears": int(clears),
+            "reviews": int(reviews),
             "play_url": url_for('play_level', id=id),
         })
     return json.dumps(response)
@@ -105,7 +113,8 @@ def get_users_levels():
     result = db.session.execute(text("""
         SELECT Levels.id, Levels.name, Users.username,
             (SELECT COUNT(*) FROM LevelPlays WHERE Levels.id = LevelPlays.level_id),
-            (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id)
+            (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id),
+            (SELECT COUNT(*) FROM Reviews WHERE Levels.id = Reviews.level_id)
         FROM Levels
         LEFT JOIN Users ON Users.id = Levels.publisher
         WHERE Users.id = :user_id
@@ -115,12 +124,13 @@ def get_users_levels():
     })
 
     response = list()
-    for id, name, publisher, plays, clears in result.fetchall():
+    for id, name, publisher, plays, clears, reviews in result.fetchall():
         response.append({
             "name": str(name),
             "publisher": str(publisher),
             "plays": int(plays),
             "clears": int(clears),
+            "reviews": int(reviews),
             "play_url": url_for('play_level', id=id),
         })
     return json.dumps(response)
@@ -182,6 +192,66 @@ def mark_level_as_cleared(id: int):
     """), {
         "level_id": id,
         "user_id": session["user_id"]
+    })
+    db.session.commit()
+
+    return {}, 200
+
+@app.route("/api/levels/<int:id>/reviews")
+def get_all_level_reviews(id: int):
+    result = db.session.execute(text("""
+        SELECT Users.id, Users.username, Reviews.rating, Reviews.body, Reviews.posted_at
+        FROM Reviews
+        LEFT JOIN Users ON Users.id = Reviews.user_id
+        LEFT JOIN Levels ON Levels.id = Reviews.level_id
+        WHERE Levels.id = :level_id
+        GROUP BY Users.id, Users.username, Reviews.rating, Reviews.body, Reviews.posted_at
+    """), {
+        "level_id": id,
+    })
+
+    response = list()
+    for user_id, username, rating, body, posted_at in result.fetchall():
+        response.append({
+            "user_id": int(user_id),
+            "username": str(username),
+            "rating": int(rating),
+            "body": str(body),
+            "posted_at": str(posted_at),
+        })
+    return json.dumps(response)
+
+@app.route("/api/levels/<int:id>/reviews", methods=["DELETE"])
+def delete_level_reviews(id: int):
+    if not "user_id" in session:
+        return make_error_response(403, 'You need to log in to create levels')
+
+    db.session.execute(text("""
+        DELETE FROM Reviews
+        WHERE user_id = :user_id AND level_id = :level_id
+    """), {
+        "user_id": session["user_id"],
+        "level_id": id,
+    })
+    db.session.commit()
+
+    return {}, 200
+
+@app.route("/api/levels/<int:id>/reviews", methods=["POST"])
+def post_level_review(id: int):
+    if not "user_id" in session:
+        return make_error_response(403, 'You need to log in to create levels')
+
+    params = Review(**request.json)
+
+    db.session.execute(text("""
+        INSERT INTO Reviews (level_id, user_id, rating, body)
+        VALUES (:level_id, :user_id, :rating, :body)
+    """), {
+        "level_id": id,
+        "user_id": session["user_id"],
+        "rating": params.rating,
+        "body": params.body
     })
     db.session.commit()
 
@@ -428,6 +498,10 @@ def api_auth_logout_user():
     return {}, 200
 
 ### Pages ###
+
+@app.route("/star-svg")
+def asset_star_svg():
+    return render_template("star.svg.j2")
 
 @app.route("/")
 def index():
