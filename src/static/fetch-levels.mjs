@@ -66,7 +66,7 @@ async function loadLevelsTo(target, my = false) {
     if (levels.length === 0) {
         const none = document.createElement('p');
         none.innerText = 'No levels found :(';
-        none.classList.add('center');
+        none.classList.add('none-found');
         target.appendChild(none);
     }
 }
@@ -110,7 +110,7 @@ async function loadEditableLevelsTo(target) {
     if (levels.length === 0) {
         const none = document.createElement('p');
         none.innerText = 'No levels found :(';
-        none.classList.add('center');
+        none.classList.add('none-found');
         target.appendChild(none);
     }
 }
