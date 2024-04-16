@@ -17,6 +17,39 @@ main {
 p {
     margin: 0;
 }
+p.center {
+    text-align: center;
+}
+
+img.logo {
+    animation: logo-animation 1s infinite alternate, rainbow 7s infinite alternate;
+}
+@keyframes logo-animation {
+    0% {
+        transform: scale(90%, 80%) rotate(-2deg);
+        filter: hue-rotate(-90deg);
+    }
+    50% {
+        transform: scale(100%) rotate(0deg);
+    }
+    100% {
+        transform: scale(100%, 110%);
+    }
+}
+@keyframes rainbow {
+    0% {
+        filter: hue-rotate(180deg);
+    }
+    33% {
+        filter: hue-rotate(0deg);
+    }
+    66% {
+        filter: hue-rotate(-180deg);
+    }
+    100% {
+        filter: hue-rotate(0deg);
+    }
+}
 
 a {
     border-radius: .25rem;

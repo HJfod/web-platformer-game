@@ -5,7 +5,12 @@
 {% set scripts = ['fetch-levels.mjs'] %}
 
 {% block content %}
-    <h1>awesome game</h1>
+    <img
+        src="{{ url_for('static', filename='totally.png') }}"
+        alt="totally a VIDEOGAME"
+        height="225"
+        class="logo"
+    >
     
     {% if session.user_id %}
         <a href="{{ url_for('userpage') }}">Create levels</a>

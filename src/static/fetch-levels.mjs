@@ -62,6 +62,13 @@ async function loadLevelsTo(target, my = false) {
 
         target.appendChild(article);
     }
+
+    if (levels.length === 0) {
+        const none = document.createElement('p');
+        none.innerText = 'No levels found :(';
+        none.classList.add('center');
+        target.appendChild(none);
+    }
 }
 
 /**
@@ -98,6 +105,13 @@ async function loadEditableLevelsTo(target) {
         article.appendChild(play);
 
         target.appendChild(article);
+    }
+
+    if (levels.length === 0) {
+        const none = document.createElement('p');
+        none.innerText = 'No levels found :(';
+        none.classList.add('center');
+        target.appendChild(none);
     }
 }
 
