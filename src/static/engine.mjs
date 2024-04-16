@@ -198,6 +198,15 @@ class GameObject {
     }
 
     /**
+     * Get the hitbox of the object. By default the object has no hitbox 
+     * (represented by `undefined`)
+     * @returns {Hitbox | undefined}
+     */
+    hitbox() {
+        return undefined;
+    }
+
+    /**
      * Get the hitbox translated to world coordinates
      * @returns {Hitbox | undefined}
      */
@@ -212,12 +221,11 @@ class GameObject {
     }
 
     /**
-     * Get the hitbox of the object. By default the object has no hitbox 
-     * (represented by `undefined`)
-     * @returns {Hitbox | undefined}
+     * Get the relative grid-sized hitbox in world coordinates
+     * @returns {Hitbox}
      */
-    hitbox() {
-        return undefined;
+    absgridhitbox() {
+        return new Hitbox(this.x, this.y, OBJECT_UNIT, OBJECT_UNIT, this.rotation);
     }
 
     /**
@@ -422,6 +430,7 @@ class GroundSpikeObject extends GameObject {
         ctx.lineTo(+OBJECT_UNIT / 2, -OBJECT_UNIT / 6);
         ctx.lineTo(+OBJECT_UNIT / 2, -OBJECT_UNIT / 2);
         ctx.fill();
+        ctx.stroke();
         ctx.closePath();
     }
 }
@@ -1046,7 +1055,9 @@ class Level {
                     this.editorGhostObject.x = gridX;
                     this.editorGhostObject.y = gridY;
                     this.editorGhostObject.opacity = 0.3;
-                    if (inputManager.mouseDown && !this.editorClickedObj) {
+                    if (inputManager.mouseDown && (
+                        !this.editorClickedObj || !this.editorClickedObj.absgridhitbox()?.contains(x, y)
+                    )) {
                         let obj = this.createObject(
                             this.editorGhostObject.type,
                             this.editorGhostObject.x,
@@ -1059,7 +1070,7 @@ class Level {
     
                 let hoveredObj = undefined;
                 for (const obj of this.objects) {
-                    const hovered = obj.abshitbox()?.contains(x, y);
+                    const hovered = obj.absgridhitbox()?.contains(x, y);
                     if (this.editorTool == 'eraser' && hovered && !hoveredObj) {
                         obj.hovered = 'to-delete';
                         hoveredObj = obj;
@@ -1073,7 +1084,7 @@ class Level {
                     }
                 }
     
-                if (hoveredObj && inputManager.mouseDown && !this.editorClickedObj) {
+                if (hoveredObj && inputManager.mouseDown) {
                     if (this.editorTool == 'eraser') {
                         if (hoveredObj.deletable) {
                             hoveredObj.removeThis();
