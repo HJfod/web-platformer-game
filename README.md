@@ -29,6 +29,7 @@ Anyone can play maps without needing to log in. Users with an account can also c
  * [ ] Polish in-game graphics
  * [ ] Polish level editor UI/UX
  * [ ] Finish gameplay features such as moving objects
+ * [ ] Mobile support
 
 ## :zap: Running a local copy
 
