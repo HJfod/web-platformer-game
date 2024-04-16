@@ -5,6 +5,13 @@
 {% set scripts = ['fetch-reviews.mjs'] %}
 
 {% block content %}
+    <div class="level-title">
+        <div class="row">
+            <h1>{{ level_name }}</h1>
+            <h3>by {{ level_creator }}</h3>
+        </div>
+        <h4 id="publish-date"></h4>
+    </div>
     <div class="row wide-gap">
         <div class="canvas-with-overlay">
             <canvas width="704" height="704" style="background: #aaa;">
@@ -22,27 +29,31 @@
                         <a href="{{ url_for('index') }}">Home</a>
                         <hr>
                         {% if session.user_id %}
-                            <fieldset class="stars">
-                                <legend>Give this level a score!</legend>
-                                <div class="list">
-                                    <span>{% include 'star.svg.j2' %}</span>
-                                    <input type="radio" name="score" value="5">
-                                    {% include 'star.svg.j2' %}
-                                    <input type="radio" name="score" value="4">
-                                    {% include 'star.svg.j2' %}
-                                    <input type="radio" name="score" value="3">
-                                    {% include 'star.svg.j2' %}
-                                    <input type="radio" name="score" value="2">
-                                    {% include 'star.svg.j2' %}
-                                    <input type="radio" name="score" value="1">
-                                    {% include 'star.svg.j2' %}
-                                    <input type="radio" name="score" value="0" checked>
-                                    {% include 'star.svg.j2' %}
-                                </div>
-                                <p id="rating-name"></p>
-                            </fieldset>
-                            <textarea id="review-area" placeholder="Write a review"></textarea>
-                            <a id="post-review">Submit Review</a>
+                            {% if level_has_been_reviewed_by_current_user %}
+                                <textarea disabled placeholder="You have already reviewed this level!"></textarea>
+                            {% else %}
+                                <fieldset class="stars">
+                                    <legend>Give this level a score!</legend>
+                                    <div class="list">
+                                        <span>{% include 'star.svg.j2' %}</span>
+                                        <input type="radio" name="score" value="5">
+                                        {% include 'star.svg.j2' %}
+                                        <input type="radio" name="score" value="4">
+                                        {% include 'star.svg.j2' %}
+                                        <input type="radio" name="score" value="3">
+                                        {% include 'star.svg.j2' %}
+                                        <input type="radio" name="score" value="2">
+                                        {% include 'star.svg.j2' %}
+                                        <input type="radio" name="score" value="1">
+                                        {% include 'star.svg.j2' %}
+                                        <input type="radio" name="score" value="0" checked>
+                                        {% include 'star.svg.j2' %}
+                                    </div>
+                                    <p id="rating-name"></p>
+                                </fieldset>
+                                <textarea id="review-area" placeholder="Write a review"></textarea>
+                                <a id="post-review">Submit Review</a>
+                            {% endif %}
                         {% else %}
                             <textarea disabled placeholder="Log in to post reviews!"></textarea>
                         {% endif %}
@@ -64,6 +75,10 @@
 
         const canvas = document.querySelector('canvas');
         loadLevelByID(canvas, '{{ level_id }}');
+
+        document.querySelector('#publish-date').innerHTML = `Published on ${
+            new Date(Date.parse('{{ level_published_at }}')).toDateString()
+        }`;
 
         function updateRatingLabel() {
             const label = document.querySelector('#rating-name');

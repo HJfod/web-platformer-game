@@ -29,6 +29,7 @@
     <body>
         <main>
             <div class="login">
+                <a href="{{ url_for('index') }}">Home</a>
                 {% if session.username %}
                     <p>Logged in as {{ session.username }}</p>
                     <a href="{{ url_for('userpage') }}">My page</a>
@@ -42,8 +43,6 @@
                     <a id="create-account" tabindex="0">Create Account</a>
                 {% endif %}
             </div>
-
-            <a id="prev-page">Back to previous page</a>
 
             {% block content %}{% endblock %}
         </main>

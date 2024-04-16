@@ -531,4 +531,36 @@ def edit_level(id: int):
 
 @app.route("/level/<int:id>")
 def play_level(id: int):
-    return render_template("pages/level.html.j2", level_id=id)
+    result = db.session.execute(text("""
+        SELECT Levels.id, Levels.name, Levels.published_at, Users.id, Users.username,
+            (SELECT COUNT(*) FROM LevelPlays WHERE Levels.id = LevelPlays.level_id),
+            (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id),
+            (SELECT COUNT(*) FROM Reviews WHERE Levels.id = Reviews.level_id)
+        FROM Levels
+        LEFT JOIN Users ON Users.id = Levels.publisher
+        WHERE Levels.id = :level_id
+        GROUP BY Levels.id, Levels.name, Levels.published_at, Users.id, Users.username
+    """), {
+        "level_id": id,
+    })
+    level_id, name, published_at, user_id, publisher, plays, clears, reviews = result.fetchall()[0]
+
+    user_has_review = False
+    if "user_id" in session:
+        user_has_review = db.session.execute(text("""
+            SELECT COUNT(*)
+            FROM Reviews
+            WHERE Reviews.user_id = :user_id AND Reviews.level_id = :level_id
+        """), {
+            "level_id": id,
+            "user_id": session["user_id"],
+        }).fetchone()[0]
+    
+    return render_template(
+        "pages/level.html.j2",
+        level_id=id,
+        level_name=name,
+        level_creator=publisher,
+        level_published_at=published_at,
+        level_has_been_reviewed_by_current_user=user_has_review,
+    )

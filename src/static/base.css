@@ -30,6 +30,34 @@ p.none-found {
     border: .1rem rgba(255, 255, 255, 0.8) solid;
 }
 
+.level-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    align-self: center;
+    padding: .5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    border-radius: .5rem;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: .1rem rgba(255, 255, 255, 0.8) solid;
+}
+.level-title > div.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+.level-title h1, .level-title h3, .level-title h4 {
+    margin: 0;
+}
+.level-title h3, .level-title h4 {
+    font-weight: normal;
+}
+
 img.logo {
     animation: logo-animation 1s infinite alternate, rainbow 7s infinite alternate;
 }
