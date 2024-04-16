@@ -31,6 +31,7 @@
             <div class="login">
                 {% if session.username %}
                     <p>Logged in as {{ session.username }}</p>
+                    <a href="{{ url_for('userpage') }}">My page</a>
                     <a id="logout">Logout</a>
                 {% else %}
                     <!-- the day i use http forms is the day i will be dead -->
@@ -41,6 +42,8 @@
                     <a id="create-account" tabindex="0">Create Account</a>
                 {% endif %}
             </div>
+
+            <a id="prev-page">Back to previous page</a>
 
             {% block content %}{% endblock %}
         </main>

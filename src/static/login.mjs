@@ -5,6 +5,7 @@ const logoutBtn        = /** @type {HTMLButtonElement | undefined} */ (document.
 const createAccountBtn = /** @type {HTMLButtonElement | undefined} */ (document.querySelector('.login > #create-account'));
 const usernameInput    = /** @type {HTMLInputElement | undefined} */  (document.querySelector('.login > #username-input'));
 const passwordInput    = /** @type {HTMLInputElement | undefined} */  (document.querySelector('.login > #password-input'));
+const prevPageBtn      = /** @type {HTMLButtonElement | undefined} */ (document.querySelector('#prev-page'));
 
 // todo: get rid of these dumb alerts
 
@@ -63,4 +64,7 @@ logoutBtn?.addEventListener('click', async e => {
         return alert(`Unable to log out: ${obj.reason}`);
     }
     location.reload();
+});
+prevPageBtn?.addEventListener('click', e => {
+    history.back();
 });
