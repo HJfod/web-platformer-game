@@ -143,6 +143,9 @@ textarea {
 .hidden {
     display: none;
 }
+.invisible {
+    opacity: 0;
+}
 
 div.levels-list, div.reviews-list {
     width: clamp(40ch, 60ch, 60vw);
@@ -192,6 +195,9 @@ div.row {
     flex-direction: row;
     align-items: start;
     gap: .5rem;
+}
+div.row.centered {
+    align-items: center;
 }
 div.row.wide-gap {
     gap: 2rem;

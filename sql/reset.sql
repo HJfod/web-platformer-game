@@ -5,6 +5,7 @@ CREATE TABLE Users (
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     username TEXT NOT NULL,
     password TEXT NOT NULL,
+    icon TEXT NULL,
     CONSTRAINT username_unique UNIQUE (username),
     CONSTRAINT username_length CHECK (LENGTH(username) >= 3 AND LENGTH(username) <= 20)
 );

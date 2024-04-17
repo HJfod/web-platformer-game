@@ -23,6 +23,7 @@ def api_auth_create_account():
 
     session['user_id'] = user_id
     session['username'] = params.username
+    session['user_icon'] = 'gradient'
 
     return {}, 200
 
@@ -31,7 +32,7 @@ def api_auth_login_user():
     params = Login(**request.json)
 
     result = db.session.execute(text("""
-        SELECT password, id
+        SELECT password, id, icon
         FROM Users
         WHERE username = :username
     """), {
@@ -40,17 +41,20 @@ def api_auth_login_user():
     if result == None:
         return make_error_response(403, "No such user")
     
-    pw_hash, user_id = result
+    pw_hash, user_id, icon = result
     if not check_password_hash(pw_hash, params.password):
         return make_error_response(403, "Wrong password")
 
     session['user_id'] = user_id
     session['username'] = params.username
+    session['user_icon'] = icon
 
     return {}, 200
 
 @auth_api.route("/api/auth/logout", methods=["POST"])
 def api_auth_logout_user():
-    del session['user_id']
-    del session['username']
+    if 'user_id' in session:
+        del session['user_id']
+        del session['username']
+        del session['user_icon']
     return {}, 200

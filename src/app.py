@@ -7,6 +7,7 @@ from werkzeug.exceptions import HTTPException
 from sqlalchemy.exc import IntegrityError
 from models import make_error_response, db
 from api.auth import auth_api
+from api.user import user_api
 from api.editor import editor_api
 from api.levels import levels_api
 from api.reviews import reviews_api
@@ -25,6 +26,7 @@ app.secret_key = getenv("SECRET_KEY")
 app.template_folder = '../templates'
 db.init_app(app)
 app.register_blueprint(auth_api)
+app.register_blueprint(user_api)
 app.register_blueprint(levels_api)
 app.register_blueprint(reviews_api)
 app.register_blueprint(editor_api)

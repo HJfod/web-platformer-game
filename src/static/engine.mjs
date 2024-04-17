@@ -113,6 +113,7 @@ document.addEventListener('mouseup', e => {
 /**
  * @typedef {'block' | 'spike' | 'ground-spike' | 'goal' | 'player' | 'particles'} ObjectType
  * @typedef {'deco' | 'solid' | 'deadly' | 'goal'} ObjectCollision
+ * @typedef {'gradient' | 'smile' | 'troll' | 'ball'} PlayerIcon
  * @typedef {{ tick(delta: number): void, render(ctx: CanvasRenderingContext2D): void }} Renderable
  */
 
@@ -499,6 +500,14 @@ class PlayerObject extends GameObject {
     constructor(level, x, y) {
         super('player', level, x, y);
         /**
+         * @type {PlayerIcon}
+         */
+        this.icon = 'gradient';
+        /**
+         * @type {string}
+         */
+        this.particleColor = '#000';
+        /**
          * @type {Vec2}
          */
         this.speed = { x: 0, y: 0 };
@@ -532,6 +541,15 @@ class PlayerObject extends GameObject {
         this.winning = undefined;
 
         this.deletable = false;
+
+        // Fetch selected player icon asynchronously
+        (async () => {
+            try {
+                const res = await fetch('/api/user/icon');
+                this.icon = /** @type {PlayerIcon} */ (await res.text());
+            }
+            catch {}
+        })();
     }
 
     checkCollisions() {
@@ -626,7 +644,7 @@ class PlayerObject extends GameObject {
     }
     kill() {
         if (this.level) {
-            new ParticleObject(this.level, 15, 60, "#f07", this.x, this.y);
+            new ParticleObject(this.level, 15, 60, this.particleColor, this.x, this.y);
         }
         this.level?.reset();
     }
@@ -729,7 +747,7 @@ class PlayerObject extends GameObject {
             }
 
             // Snap rotation if not jumping
-            if (!inputManager.up) {
+            if (!inputManager.up && this.icon !== 'ball') {
                 const target = Math.round(this.rotation / (0.5 * Math.PI)) * (0.5 * Math.PI);
                 if (this.rotation < target) {
                     this.rotation += Math.abs(this.rotation - target) / 2;
@@ -765,7 +783,7 @@ class PlayerObject extends GameObject {
         this.x += this.speed.x * delta;
         this.y += this.speed.y * delta;
 
-        if (this.collidingBlockBelow === undefined) {
+        if (this.collidingBlockBelow === undefined || this.icon === 'ball') {
             this.rotation -= this.speed.x / 40 * delta;
         }
     }
@@ -787,17 +805,157 @@ class PlayerObject extends GameObject {
             1 - clamp(this.squish.x * 0.02, -0.1, 0.5)
         );
 
-        const gradient = ctx.createLinearGradient(0, +OBJECT_UNIT / 2, 0, -OBJECT_UNIT);
-        gradient.addColorStop(0, "#f07");
-        gradient.addColorStop(1, "#07f");
-
-        ctx.fillStyle = gradient;
         ctx.globalAlpha = (this.level?.editorMode && !this.level?.playtesting) ? 0.3 : 1;
-        ctx.beginPath();
-        ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
-        ctx.fill();
-        ctx.stroke();
-        ctx.closePath();
+
+        switch (this.icon) {
+            default:
+            case 'gradient': {
+                const gradient = ctx.createLinearGradient(0, +OBJECT_UNIT / 2, 0, -OBJECT_UNIT);
+                gradient.addColorStop(0, "#f07");
+                gradient.addColorStop(1, "#07f");
+                this.particleColor = '#f07';
+        
+                ctx.fillStyle = gradient;
+
+                ctx.beginPath();
+                ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+            } break;
+
+            case 'smile': {
+                const gradient = ctx.createRadialGradient(0, 0, OBJECT_UNIT / 2, 0, OBJECT_UNIT / 8, OBJECT_UNIT / 4);
+                gradient.addColorStop(0, "#de2");
+                gradient.addColorStop(1, "#ffa");
+
+                ctx.fillStyle = gradient;
+                this.particleColor = '#df3';
+                
+                ctx.beginPath();
+                ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.fillStyle = this.color;
+
+                ctx.beginPath();
+                ctx.moveTo(-OBJECT_UNIT / 4, 0);
+                ctx.bezierCurveTo(
+                    -OBJECT_UNIT / 4, -OBJECT_UNIT / 3,
+                    +OBJECT_UNIT / 4, -OBJECT_UNIT / 3,
+                    +OBJECT_UNIT / 4, 0
+                );
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.beginPath();
+                ctx.arc(-OBJECT_UNIT / 4, OBJECT_UNIT / 4, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+                
+                ctx.beginPath();
+                ctx.arc(+OBJECT_UNIT / 4, OBJECT_UNIT / 4, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+                
+                ctx.fillStyle = '#fff';
+
+                ctx.beginPath();
+                ctx.arc(-OBJECT_UNIT / 4 - 1, OBJECT_UNIT / 4 + 1, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+                
+                ctx.beginPath();
+                ctx.arc(+OBJECT_UNIT / 4 - 1, OBJECT_UNIT / 4 + 1, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            } break;
+
+            case 'troll': {
+                ctx.fillStyle = '#eee';
+                this.particleColor = '#eee';
+                
+                ctx.beginPath();
+                ctx.roundRect(-OBJECT_UNIT / 2, -OBJECT_UNIT / 2, OBJECT_UNIT, OBJECT_UNIT, 3);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.fillStyle = this.color;
+
+                ctx.beginPath();
+                ctx.moveTo(-OBJECT_UNIT / 3, 0);
+                ctx.bezierCurveTo(
+                    -OBJECT_UNIT / 2, -OBJECT_UNIT / 3,
+                    +OBJECT_UNIT / 4, -OBJECT_UNIT / 3,
+                    +OBJECT_UNIT / 3, 0
+                );
+                ctx.lineTo(-OBJECT_UNIT / 3, 0);
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.moveTo(-OBJECT_UNIT / 3, -OBJECT_UNIT / 3.5);
+                ctx.bezierCurveTo(
+                    -OBJECT_UNIT / 2, -OBJECT_UNIT / 2.5,
+                    +OBJECT_UNIT / 4, -OBJECT_UNIT / 2.5,
+                    +OBJECT_UNIT / 6, -OBJECT_UNIT / 3.5
+                );
+                ctx.stroke();
+                
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, -OBJECT_UNIT / 4 + 1);
+                ctx.stroke();
+                
+                ctx.moveTo(-OBJECT_UNIT / 5, 0);
+                ctx.lineTo(-OBJECT_UNIT / 5, -OBJECT_UNIT / 4 + 1);
+                ctx.stroke();
+                
+                ctx.moveTo(+OBJECT_UNIT / 5, 0);
+                ctx.lineTo(+OBJECT_UNIT / 5, -OBJECT_UNIT / 5);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(-OBJECT_UNIT / 4, OBJECT_UNIT / 6, 4, 0, Math.PI);
+                ctx.fill();
+                ctx.closePath();
+                
+                ctx.beginPath();
+                ctx.arc(+OBJECT_UNIT / 4, OBJECT_UNIT / 6, 4, 0, Math.PI);
+                ctx.fill();
+                ctx.closePath();
+                
+                ctx.fillStyle = '#fff';
+
+                ctx.beginPath();
+                ctx.arc(-OBJECT_UNIT / 4 - 1, OBJECT_UNIT / 6 + 1, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+                
+                ctx.beginPath();
+                ctx.arc(+OBJECT_UNIT / 4 - 1, OBJECT_UNIT / 6 + 1, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            } break;
+        
+            case 'ball': {
+                ctx.beginPath();
+                const gradient = ctx.createConicGradient(0, 0, 0);
+                gradient.addColorStop(0 / 5, "#f00");
+                gradient.addColorStop(1 / 5, "#ff0");
+                gradient.addColorStop(2 / 5, "#0f0");
+                gradient.addColorStop(3 / 5, "#0ff");
+                gradient.addColorStop(4 / 5, "#00f");
+                gradient.addColorStop(5 / 5, "#f0f");
+                ctx.fillStyle = gradient;
+                this.particleColor = '#fff';
+                ctx.arc(0, 0, OBJECT_UNIT / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+            } break;
+        }
     }
 }
 
@@ -902,7 +1060,7 @@ class Level {
         /**
          * @type {boolean}
          */
-        this.debug = true;
+        this.debug = false;
 
         this.scheduleRender(canvas);
 

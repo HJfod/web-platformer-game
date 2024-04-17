@@ -7,22 +7,64 @@
 {% block content %}
     {% if not session.user_id %}
 
-        <h1>Creating levels requires you to <b>Log in</b></h1>
+        <h1>You need to <b>Log in</b> to access this page!</h1>
 
     {% else %}
 
-        <h1>Pick level to edit</h1>
+        <h1>My page</h1>
 
-        <h3>Published levels</h3>
+        <h3>Select character</h3>
+        <select id="icon-select">
+            <option value="gradient">Gradient Cube</option>
+            <option value="smile">Smile Guy</option>
+            <option value="troll">Troll Guy</option>
+            <option value="ball">Ball</option>
+        </select>
+
+        <h3>My published levels</h3>
         <div id="my-levels-list" class="levels-list"></div>
 
-        <h3>Created levels</h3>
-        <a id="create-new">Create new level</a>
+        <div class="row centered wide-gap">
+            <hr class="invisible">
+            <hr class="invisible">
+            <hr class="invisible">
+            <h3>My created levels</h3>
+            <a id="create-new">New</a>
+        </div>
         <div id="created-levels-list" class="levels-list">
             <p>Loading levels...</p>
         </div>
         
         <script type="module">
+            document.querySelector('#icon-select').value = `
+                {% if session['user_icon'] %}
+                    {{ session['user_icon'] }}
+                {% else %}
+                    {{ 'gradient' }}
+                {% endif %}
+            `.trim();
+            
+            document.querySelector('#icon-select').addEventListener('change', async e => {
+                try {
+                    const res = await fetch('/api/user/icon', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            icon: document.querySelector('#icon-select').value
+                        }),
+                        headers: {
+                            'Content-type': 'application/json; charset=UTF-8'
+                        }
+                    });
+                    const msg = await res.json();
+                    if (!res.ok) {
+                        throw msg.reason;
+                    }
+                }
+                catch(e) {
+                    alert(`Error selecting icon: ${e}`);
+                }
+            });
+
             document.querySelector('#create-new').addEventListener('click', async e => {
                 try {
                     const res = await fetch('/api/levels/wip', {

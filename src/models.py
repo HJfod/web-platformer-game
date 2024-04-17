@@ -15,6 +15,10 @@ class Review:
     body: str
 
 @dataclass
+class Icon:
+    icon: str
+
+@dataclass
 class Login:
     username: str
     password: str
