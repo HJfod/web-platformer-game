@@ -547,7 +547,9 @@ class PlayerObject extends GameObject {
         // The player will always have a hitbox
         const player = /** @type {Hitbox} */ (this.abshitbox());
 
-        const OBJ_HITBOX_SIZE = 8;
+        const hitboxTouching = (/** @type {number} */ a, /** @type {number} */ b, /** @type {number} */ speed) => {
+            return Math.abs(a - b) < Math.max(speed, 4);
+        }
 
         // Check all objects (no way there would be so many that this would be laggy haha)
         for (const obj_ of level.objects) {
@@ -557,30 +559,30 @@ class PlayerObject extends GameObject {
             if (obj) {
                 const sameX = player.right() > obj.left() && player.left() < obj.right();
                 const sameY = player.top() > obj.bottom() && player.bottom() < obj.top();
-                if (Math.abs(player.bottom() - obj.top() + OBJ_HITBOX_SIZE) < OBJ_HITBOX_SIZE && sameX) {
+                if (hitboxTouching(player.bottom(), obj.top(), this.speed.y) && sameX) {
                     switch (obj_.collision) {
                         case 'solid': this.collidingBlockBelow = obj.top(); break;
                         case 'deadly': this.kill(); break;
                         case 'goal': this.win(obj.x, obj.y); break;
                     }
                 }
-                else if (Math.abs(player.left() - obj.right() + OBJ_HITBOX_SIZE) < OBJ_HITBOX_SIZE && sameY) {
+                if (hitboxTouching(player.top(), obj.bottom(), this.speed.y) && sameX) {
                     switch (obj_.collision) {
-                        case 'solid': this.collidingBlockLeft = obj.right();break;
+                        case 'solid': this.collidingBlockAbove = obj.bottom(); break;
                         case 'deadly': this.kill(); break;
                         case 'goal': this.win(obj.x, obj.y); break;
                     }
                 }
-                else if (Math.abs(player.right() - obj.left() - OBJ_HITBOX_SIZE) < OBJ_HITBOX_SIZE && sameY) {
+                if (hitboxTouching(player.left(), obj.right(), this.speed.x) && sameY) {
                     switch (obj_.collision) {
-                        case 'solid': this.collidingBlockRight = obj.left();break;
+                        case 'solid': this.collidingBlockLeft = obj.right(); break;
                         case 'deadly': this.kill(); break;
                         case 'goal': this.win(obj.x, obj.y); break;
                     }
                 }
-                else if (Math.abs(player.top() - obj.bottom() - OBJ_HITBOX_SIZE) < OBJ_HITBOX_SIZE && sameX) {
+                if (hitboxTouching(player.right(), obj.left(), this.speed.x) && sameY) {
                     switch (obj_.collision) {
-                        case 'solid': this.collidingBlockAbove = obj.bottom();break;
+                        case 'solid': this.collidingBlockRight = obj.left(); break;
                         case 'deadly': this.kill(); break;
                         case 'goal': this.win(obj.x, obj.y); break;
                     }
@@ -589,16 +591,16 @@ class PlayerObject extends GameObject {
         }
 
         // Check level borders
-        if (player.top() > level.height - OBJECT_UNIT) {
+        if (hitboxTouching(player.top(), level.height - OBJECT_UNIT, this.speed.y)) {
             this.collidingBlockAbove = level.height - OBJECT_UNIT;
         }
-        if (player.bottom() < OBJECT_UNIT) {
+        if (hitboxTouching(player.bottom(), OBJECT_UNIT, this.speed.y)) {
             this.collidingBlockBelow = OBJECT_UNIT;
         }
-        if (player.right() > level.width - OBJECT_UNIT) {
+        if (hitboxTouching(player.right(), level.width - OBJECT_UNIT, this.speed.x)) {
             this.collidingBlockRight = level.width - OBJECT_UNIT;
         }
-        if (player.left() < OBJECT_UNIT) {
+        if (hitboxTouching(player.left(), OBJECT_UNIT, this.speed.x)) {
             this.collidingBlockLeft = OBJECT_UNIT;
         }
     }
@@ -721,10 +723,10 @@ class PlayerObject extends GameObject {
         this.speed.y = clamp(this.speed.y, -SPEED_CAP_Y, +SPEED_CAP_Y * 2);
 
         if (this.collidingBlockBelow !== undefined) {
-            if (this.y < this.collidingBlockBelow) {
+            if (this.speed.y <= 0) {
                 this.y = this.collidingBlockBelow;
+                this.speed.y = 0;
             }
-            if (this.speed.y < 0) this.speed.y = 0;
 
             // Snap rotation if not jumping
             if (!inputManager.up) {
@@ -740,23 +742,23 @@ class PlayerObject extends GameObject {
                 }
             }
         }
-        else if (this.collidingBlockAbove !== undefined) {
-            if (this.y > this.collidingBlockAbove - OBJECT_UNIT) {
+        if (this.collidingBlockAbove !== undefined) {
+            if (this.speed.y > 0) {
                 this.y = this.collidingBlockAbove - OBJECT_UNIT;
+                this.speed.y = 0;
             }
-            if (this.speed.y > 0) this.speed.y = 0;
         }
         if (this.collidingBlockLeft !== undefined) {
-            if (this.x < this.collidingBlockLeft) {
+            if (this.speed.x < 0) {
                 this.x = this.collidingBlockLeft;
+                this.speed.x = 0;
             }
-            if (this.speed.x < 0) this.speed.x = 0;
         }
-        else if (this.collidingBlockRight !== undefined) {
-            if (this.x > this.collidingBlockRight - OBJECT_UNIT) {
+        if (this.collidingBlockRight !== undefined) {
+            if (this.speed.x > 0) {
                 this.x = this.collidingBlockRight - OBJECT_UNIT;
+                this.speed.x = 0;
             }
-            if (this.speed.x > 0) this.speed.x = 0;
         }
 
         // Update position based on speed
@@ -897,6 +899,10 @@ class Level {
          * @type {boolean}
          */
         this.winning = false;
+        /**
+         * @type {boolean}
+         */
+        this.debug = true;
 
         this.scheduleRender(canvas);
 
@@ -1139,6 +1145,18 @@ class Level {
             ctx.textBaseline = 'middle';
             ctx.textAlign = 'center';
             ctx.fillText(this.errorMessage ?? 'Loading level...', this.width / 2, this.height / 2);
+            ctx.setTransform(1, 0, 0, -1, 0, this.height - 1);
+        }
+
+        if (this.debug) {
+            ctx.resetTransform();
+            ctx.font = '.5rem sans-serif';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+            ctx.fillText(`above: ${this.player?.collidingBlockAbove}`, OBJECT_UNIT * 2, OBJECT_UNIT * 2);
+            ctx.fillText(`left: ${this.player?.collidingBlockLeft}`, OBJECT_UNIT * 2, OBJECT_UNIT * 3);
+            ctx.fillText(`right: ${this.player?.collidingBlockRight}`, OBJECT_UNIT * 2, OBJECT_UNIT * 4);
+            ctx.fillText(`below: ${this.player?.collidingBlockBelow}`, OBJECT_UNIT * 2, OBJECT_UNIT * 5);
             ctx.setTransform(1, 0, 0, -1, 0, this.height - 1);
         }
         
