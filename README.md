@@ -27,8 +27,6 @@ Anyone can play maps without needing to log in. Users with an account can also c
  * [x] Level reviews
  * [x] Player sprite & color customizability options
  * [x] Polish in-game graphics
- * [ ] Polish level editor UI/UX
- * [ ] Finish gameplay features such as moving objects
  * [ ] Mobile support
 
 ## :zap: Running a local copy
@@ -45,4 +43,6 @@ These are the instructions for running a **local server** of the game. This mean
 
 4. Make sure your Postgres service is running. Initialize the Postgres database by running `postgres -U <your_user_name> -f sql/reset.sql`.
 
-5. You can then run a local server by running `python -m flask --app src/app.py run --debug`. This starts a new web server at [http://127.0.0.1:5000] by default.
+5. Define the environment variables (for example by using a `.env` file) for `DATABASE_URL` (URL of your Postgres DB) and `SECRET_KEY` (a random hexadecimal key string used for signing session tokens).
+
+6. You can then run a local server by running `python -m flask --app src/app.py run --debug`. This starts a new web server at [http://127.0.0.1:5000] by default.
