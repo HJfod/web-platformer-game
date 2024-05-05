@@ -72,6 +72,7 @@
 
     <script type="module">
         import { loadLevelByID } from "{{ url_for('static', filename='engine.mjs') }}";
+        import { api } from "{{ url_for('static', filename='api.mjs') }}";
 
         const canvas = document.querySelector('canvas');
         loadLevelByID(canvas, '{{ level_id }}');
@@ -81,16 +82,18 @@
         }`;
 
         function updateRatingLabel() {
-            const label = document.querySelector('#rating-name');
-            const value = document.querySelector('input[name="score"]:checked').value;
-            switch (value) {
-                default:  label.innerText = 'what?????';        break;
-                case '0': label.innerText = '(0) Terrible >:('; break;
-                case '1': label.innerText = '(1) Bad :(';       break;
-                case '2': label.innerText = '(2) Ehhh :/';      break;
-                case '3': label.innerText = '(3) Aight :|';     break;
-                case '4': label.innerText = '(4) Good :)';      break;
-                case '5': label.innerText = '(5) Amazing :D';   break;
+            if (document.querySelector('#review-area')) {
+                const label = document.querySelector('#rating-name');
+                const value = document.querySelector('input[name="score"]:checked').value;
+                switch (value) {
+                    default:  label.innerText = 'what?????';        break;
+                    case '0': label.innerText = '(0) Terrible >:('; break;
+                    case '1': label.innerText = '(1) Bad :(';       break;
+                    case '2': label.innerText = '(2) Ehhh :/';      break;
+                    case '3': label.innerText = '(3) Aight :|';     break;
+                    case '4': label.innerText = '(4) Good :)';      break;
+                    case '5': label.innerText = '(5) Amazing :D';   break;
+                }
             }
         }
         document.querySelectorAll('input[name="score"]').forEach(i => {
@@ -100,26 +103,16 @@
         });
         updateRatingLabel();
         
-        document.querySelector('#post-review').addEventListener('click', async e => {
-            try {
-                const res = await fetch('/api/levels/{{ level_id }}/reviews', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        rating: parseInt(document.querySelector('input[name="score"]:checked').value),
-                        body: document.querySelector('#review-area').value,
-                    }),
-                    headers: {
-                        'Content-type': 'application/json; charset=UTF-8'
-                    }
-                });
-                const msg = await res.json();
-                if (!res.ok) {
-                    throw msg.reason;
-                }
-                window.location.reload();
+        document.querySelector('#post-review')?.addEventListener('click', async e => {
+            const res = await api.post('/api/levels/{{ level_id }}/reviews', {
+                rating: parseInt(document.querySelector('input[name="score"]:checked').value),
+                body: document.querySelector('#review-area').value,
+            });
+            if (!res.ok) {
+                alert(`Error posting review: ${res.error}`);
             }
-            catch(e) {
-                alert(`Error posting review: ${e}`);
+            else {
+                window.location.reload();
             }
         });
     </script>

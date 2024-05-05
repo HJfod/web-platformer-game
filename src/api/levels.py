@@ -1,7 +1,7 @@
 
 from flask import Blueprint, url_for, session
 from sqlalchemy import text
-from models import make_error_response
+from models import check_logged_in, make_error_response
 from models import db
 import json
 
@@ -34,27 +34,28 @@ def get_all_levels():
 
 @levels_api.route("/api/levels/my")
 def get_users_levels():
-    if not "user_id" in session:
+    if not check_logged_in():
         return make_error_response(403, 'You need to log in to get your levels')
 
     result = db.session.execute(text("""
-        SELECT Levels.id, Levels.name, Users.username,
+        SELECT Levels.id, Levels.name, Levels.published_at, Users.username, 
             (SELECT COUNT(*) FROM LevelPlays WHERE Levels.id = LevelPlays.level_id),
             (SELECT COUNT(*) FROM LevelClears WHERE Levels.id = LevelClears.level_id),
             (SELECT COUNT(*) FROM Reviews WHERE Levels.id = Reviews.level_id)
         FROM Levels
         LEFT JOIN Users ON Users.id = Levels.publisher
         WHERE Users.id = :user_id
-        GROUP BY Levels.id, Levels.name, Users.id, Users.username
+        GROUP BY Levels.id, Levels.name, Levels.published_at, Users.id, Users.username
     """), {
         "user_id": session["user_id"],
     })
 
     response = list()
-    for id, name, publisher, plays, clears, reviews in result.fetchall():
+    for id, name, published_at, publisher, plays, clears, reviews in result.fetchall():
         response.append({
             "name": str(name),
             "publisher": str(publisher),
+            "published_at": str(published_at),
             "plays": int(plays),
             "clears": int(clears),
             "reviews": int(reviews),
@@ -75,7 +76,7 @@ def get_level_data(id: int):
 
 @levels_api.route("/api/levels/wip")
 def get_users_wip_levels():
-    if not "user_id" in session:
+    if not check_logged_in():
         return make_error_response(403, 'You need to log in to create levels')
 
     result = db.session.execute(text("""

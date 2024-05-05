@@ -1,5 +1,7 @@
 // @ts-check
 
+import { api } from "./api.mjs";
+
 const loginBtn         = /** @type {HTMLButtonElement | undefined} */ (document.querySelector('.login > #login'));
 const logoutBtn        = /** @type {HTMLButtonElement | undefined} */ (document.querySelector('.login > #logout'));
 const createAccountBtn = /** @type {HTMLButtonElement | undefined} */ (document.querySelector('.login > #create-account'));
@@ -14,56 +16,41 @@ createAccountBtn?.addEventListener('click', async e => {
     if (!un || !pw) {
         return alert(`Please enter username and password`);
     }
-    const res = await fetch('/api/auth/create-account', {
-        method: 'POST',
-        body: JSON.stringify({
-            'username': un,
-            'password': pw
-        }),
-        headers: {
-            'Content-type': 'application/json; charset=UTF-8'
-        }
+    const res = await api.post('/api/auth/create-account', {
+        'username': un,
+        'password': pw
     });
-    const obj = await res.json();
     if (!res.ok) {
-        return alert(`Unable to create account: ${obj.reason}`);
+        return alert(`Unable to create account: ${res.error}`);
     }
-    location.reload();
+    else {
+        location.reload();
+    }
 });
 loginBtn?.addEventListener('click', async e => {
     const [un, pw] = [usernameInput?.value, passwordInput?.value];
     if (!un || !pw) {
         return alert(`Please enter username and password`);
     }
-    const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-            'username': un,
-            'password': pw
-        }),
-        headers: {
-            'Content-type': 'application/json; charset=UTF-8'
-        }
+    const res = await api.post('/api/auth/login', {
+        'username': un,
+        'password': pw
     });
-    const obj = await res.json();
     if (!res.ok) {
-        return alert(`Unable to log in: ${obj.reason}`);
+        return alert(`Unable to log in: ${res.error}`);
     }
-    location.reload();
+    else {
+        location.reload();
+    }
 });
 logoutBtn?.addEventListener('click', async e => {
-    const res = await fetch('/api/auth/logout', {
-        method: 'POST',
-        body: JSON.stringify({}),
-        headers: {
-            'Content-type': 'application/json; charset=UTF-8'
-        }
-    });
-    const obj = await res.json();
+    const res = await api.post('/api/auth/logout');
     if (!res.ok) {
-        return alert(`Unable to log out: ${obj.reason}`);
+        return alert(`Unable to log out: ${res.error}`);
     }
-    location.reload();
+    else {
+        location.reload();
+    }
 });
 prevPageBtn?.addEventListener('click', e => {
     history.back();

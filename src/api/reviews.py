@@ -1,7 +1,7 @@
 
 from flask import Blueprint, request, session
 from sqlalchemy import text
-from models import make_error_response, Review
+from models import check_logged_in, check_logged_in_mut, make_error_response, Review
 from models import db
 import json
 
@@ -33,8 +33,8 @@ def get_all_level_reviews(id: int):
 
 @reviews_api.route("/api/levels/<int:id>/reviews", methods=["DELETE"])
 def delete_level_reviews(id: int):
-    if not "user_id" in session:
-        return make_error_response(403, 'You need to log in to create levels')
+    if not check_logged_in_mut():
+        return make_error_response(403, 'You need to log in to post reviews')
 
     db.session.execute(text("""
         DELETE FROM Reviews
@@ -49,8 +49,8 @@ def delete_level_reviews(id: int):
 
 @reviews_api.route("/api/levels/<int:id>/reviews", methods=["POST"])
 def post_level_review(id: int):
-    if not "user_id" in session:
-        return make_error_response(403, 'You need to log in to create levels')
+    if not check_logged_in_mut():
+        return make_error_response(403, 'You need to log in to post reviews')
 
     params = Review(**request.json)
 

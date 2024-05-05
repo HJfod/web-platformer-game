@@ -75,6 +75,7 @@
 
         <script type="module">
             import { loadEditorByID } from "{{ url_for('static', filename='engine.mjs') }}";
+            import { api } from "{{ url_for('static', filename='api.mjs') }}";
 
             const canvas = document.querySelector('canvas');
             const level = await loadEditorByID(canvas, '{{ level_id }}');
@@ -83,27 +84,15 @@
             const nameInput = /** @type {HTMLInputElement} */ (document.querySelector('#level-name'));
 
             async function updateName() {
-                try {
-                    const res = await fetch('/api/levels/wip/{{ level_id }}/update-metadata', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: nameInput.value,
-                        }),
-                        headers: {
-                            'Content-type': 'application/json; charset=UTF-8'
-                        }
-                    });
-                    const msg = await res.json();
-                    if (!res.ok) {
-                        throw msg.reason;
-                    }
-                    originalLevelName = nameInput.value;
-                }
-                catch(e) {
+                const res = await api.post('/api/levels/wip/{{ level_id }}/update-metadata', {
+                    name: nameInput.value,
+                });
+                if (!res.ok) {
                     // Reset level name
                     nameInput.value = originalLevelName;
-                    throw e;
+                    throw res.error;
                 }
+                originalLevelName = nameInput.value;
             }
 
             level.setEditorOnChange(changed => document.querySelector('#unsaved-notification').classList.toggle('hidden', !changed));

@@ -1,5 +1,7 @@
 // @ts-check
 
+import { api } from "./api.mjs";
+
 /**
  * @typedef {{ name: string, publisher: string, plays: number, clears: number, reviews: number, play_url: string, edit_url?: string, published_at: string }} Level
  * @typedef {{ name: string, url: string }} UnpublishedLevel
@@ -9,16 +11,15 @@
  * @param {Element} target 
  */
 async function loadLevelsTo(target, my = false) {
-    const res = await fetch(`/api/levels${my ? '/my' : ''}`);
-    const json = await res.json();
+    const res = await api.get(`/api/levels${my ? '/my' : ''}`);
     if (!res.ok) {
-        return alert(`Unable to load levels: ${json.reason}`);
+        return alert(`Unable to load levels: ${res.error}`);
     }
 
     // Clear target list if it had any levels previously
     target.replaceChildren();
 
-    const levels = /** @type {Level[]} */ (json);
+    const levels = /** @type {Level[]} */ (res.value);
     for (const level of levels) {
         const article = document.createElement('article');
         article.classList.add('level');
@@ -31,9 +32,10 @@ async function loadLevelsTo(target, my = false) {
         title.innerText = level.name;
         column.appendChild(title);
         
+        const date = Date.parse(level.published_at);
         const pub = document.createElement('p');
         pub.classList.add('publisher');
-        pub.innerText = `by ${level.publisher} on ${new Date(Date.parse(level.published_at)).toDateString()}`;
+        pub.innerText = `by ${level.publisher} on ${isNaN(date) ? level.published_at : new Date(date).toDateString()}`;
         column.appendChild(pub);
 
         const plays = document.createElement('p');
@@ -75,16 +77,15 @@ async function loadLevelsTo(target, my = false) {
  * @param {Element} target 
  */
 async function loadEditableLevelsTo(target) {
-    const res = await fetch('/api/levels/wip');
-    const json = await res.json();
+    const res = await api.get('/api/levels/wip');
     if (!res.ok) {
-        return alert(`Unable to load levels: ${json.reason}`);
+        return alert(`Unable to load levels: ${res.error}`);
     }
 
     // Clear target list if it had any levels previously
     target.replaceChildren();
 
-    const levels = /** @type {UnpublishedLevel[]} */ (json);
+    const levels = /** @type {UnpublishedLevel[]} */ (res.value);
     for (const level of levels) {
         const article = document.createElement('article');
         article.classList.add('level');

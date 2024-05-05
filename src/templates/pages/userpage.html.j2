@@ -36,6 +36,8 @@
         </div>
         
         <script type="module">
+            import { api } from "{{ url_for('static', filename='api.mjs') }}";
+
             document.querySelector('#icon-select').value = `
                 {% if session['user_icon'] %}
                     {{ session['user_icon'] }}
@@ -45,43 +47,23 @@
             `.trim();
             
             document.querySelector('#icon-select').addEventListener('change', async e => {
-                try {
-                    const res = await fetch('/api/user/icon', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            icon: document.querySelector('#icon-select').value
-                        }),
-                        headers: {
-                            'Content-type': 'application/json; charset=UTF-8'
-                        }
-                    });
-                    const msg = await res.json();
-                    if (!res.ok) {
-                        throw msg.reason;
-                    }
-                }
-                catch(e) {
-                    alert(`Error selecting icon: ${e}`);
+                const res = await api.post('/api/user/icon', {
+                    icon: document.querySelector('#icon-select').value
+                });
+                if (!res.ok) {
+                    alert(`Error selecting icon: ${res.error}`);
                 }
             });
 
             document.querySelector('#create-new').addEventListener('click', async e => {
-                try {
-                    const res = await fetch('/api/levels/wip', {
-                        method: 'POST',
-                        body: JSON.stringify({}),
-                        headers: {
-                            'Content-type': 'application/json; charset=UTF-8'
-                        }
-                    });
-                    const msg = await res.json();
-                    if (!res.ok) {
-                        throw msg.reason;
-                    }
-                    window.location.href = msg.url;
+                const res = await api.post('/api/levels/wip', {
+                    icon: document.querySelector('#icon-select').value
+                });
+                if (!res.ok) {
+                    alert(`Error creating level: ${res.error}`);
                 }
-                catch(e) {
-                    alert(`Error creating level: ${e}`);
+                else {
+                    window.location.href = res.value.url;
                 }
             });
         </script>

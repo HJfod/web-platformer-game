@@ -2,7 +2,7 @@
 from flask import Blueprint, url_for, request, session
 from sqlalchemy import text
 from wonderwords import RandomWord
-from models import make_error_response, UpdateLevelMetadata
+from models import check_logged_in, check_logged_in_mut, make_error_response, UpdateLevelMetadata
 from models import db
 import json
 
@@ -10,7 +10,7 @@ editor_api = Blueprint('editor_api', __name__, template_folder='../templates')
 
 @editor_api.route("/api/levels/wip", methods=["POST"])
 def create_new_level():
-    if not "user_id" in session:
+    if not check_logged_in_mut():
         return make_error_response(403, 'You need to log in to create levels')
 
     s = RandomWord()
@@ -37,7 +37,7 @@ def create_new_level():
 
 @editor_api.route("/api/levels/wip/<int:id>/update-data", methods=["POST"])
 def get_users_wip_level_update_data(id: int):
-    if not "user_id" in session:
+    if not check_logged_in_mut():
         return make_error_response(403, 'You need to log in to create levels')
 
     data = request.json
@@ -57,7 +57,7 @@ def get_users_wip_level_update_data(id: int):
 
 @editor_api.route("/api/levels/wip/<int:id>/update-metadata", methods=["POST"])
 def get_users_wip_level_update(id: int):
-    if not "user_id" in session:
+    if not check_logged_in_mut():
         return make_error_response(403, 'You need to log in to create levels')
 
     # todo: verify the level hasn't been published yet
@@ -79,7 +79,7 @@ def get_users_wip_level_update(id: int):
 
 @editor_api.route("/api/levels/wip/<int:id>/data")
 def get_users_wip_level_data(id: int):
-    if not "user_id" in session:
+    if not check_logged_in():
         return make_error_response(403, 'You need to log in to create levels')
 
     result = db.session.execute(text("""
@@ -96,7 +96,7 @@ def get_users_wip_level_data(id: int):
 
 @editor_api.route("/api/levels/wip/<int:id>/publish", methods=["POST"])
 def publish_level(id: int):
-    if not "user_id" in session:
+    if not check_logged_in_mut():
         return make_error_response(403, 'You need to log in to create levels')
 
     name, data = db.session.execute(text("""
@@ -135,7 +135,7 @@ def publish_level(id: int):
 
 @editor_api.route("/api/levels/wip/<int:id>/update", methods=["POST"])
 def update_level(id: int):
-    if not "user_id" in session:
+    if not check_logged_in_mut():
         return make_error_response(403, 'You need to log in to create levels')
 
     published_id, name, data = db.session.execute(text("""
@@ -165,7 +165,7 @@ def update_level(id: int):
 
 @editor_api.route("/api/levels/wip/<int:id>/delete", methods=["POST"])
 def delete_wip_level(id: int):
-    if not "user_id" in session:
+    if not check_logged_in_mut():
         return make_error_response(403, 'You need to log in to create levels')
 
     db.session.execute(text("""
@@ -181,7 +181,7 @@ def delete_wip_level(id: int):
 
 @editor_api.route("/api/levels/wip/<int:id>/unpublish", methods=["POST"])
 def unpublish_level(id: int):
-    if not "user_id" in session:
+    if not check_logged_in_mut():
         return make_error_response(403, 'You need to log in to create levels')
 
     db.session.execute(text("""

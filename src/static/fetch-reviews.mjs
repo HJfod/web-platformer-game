@@ -1,5 +1,7 @@
 // @ts-check
 
+import { api } from "./api.mjs";
+
 /**
  * @typedef {{ user_id: number, username: string, rating: number, body: string }} Review
  */
@@ -8,10 +10,9 @@
  * @param {Element} target 
  */
 async function loadReviewsTo(target, id, userID) {
-    const res = await fetch(`/api/levels/${id}/reviews`);
-    const json = await res.json();
+    const res = await api.get(`/api/levels/${id}/reviews`);
     if (!res.ok) {
-        return alert(`Unable to load levels: ${json.reason}`);
+        return alert(`Unable to load levels: ${res.error}`);
     }
 
     // Clear target list if it had any levels previously
@@ -20,7 +21,7 @@ async function loadReviewsTo(target, id, userID) {
     // There has to be a better way to do this but I'm too dumb to figure it out
     const starSVG = await (await fetch('/star-svg')).text();
 
-    const reviews = /** @type {Review[]} */ (json);
+    const reviews = /** @type {Review[]} */ (res.value);
     for (const review of reviews) {
         const article = document.createElement('article');
         article.classList.add('review');
@@ -57,19 +58,11 @@ async function loadReviewsTo(target, id, userID) {
             const remove = document.createElement('a');
             remove.innerText = 'Unpublish';
             remove.addEventListener('click', async e => {
-                try {
-                    const res = await fetch(`/api/levels/${id}/reviews`, {
-                        method: 'DELETE'
-                    });
-                    const json = await res.json();
-                    if (!res.ok) {
-                        throw json.reason;
-                    }
-                    window.location.reload();
+                const res = await api.delete(`/api/levels/${id}/reviews`);
+                if (!res.ok) {
+                    return alert(`Unable to delete review: ${res.error}`);
                 }
-                catch(e) {
-                    return alert(`Unable to delete review: ${e}`);
-                }
+                window.location.reload();
             });
             row.appendChild(remove);
         }

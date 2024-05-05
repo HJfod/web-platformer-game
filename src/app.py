@@ -5,7 +5,7 @@ from os import getenv, path
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
 from sqlalchemy.exc import IntegrityError
-from models import make_error_response, db
+from models import check_logged_in, check_logged_in_mut, make_error_response, db
 from api.auth import auth_api
 from api.user import user_api
 from api.editor import editor_api
@@ -78,7 +78,7 @@ def userpage():
 
 @app.route("/edit/<int:id>")
 def edit_level(id: int):
-    if not "user_id" in session:
+    if not check_logged_in():
         return make_error_response(403, 'You need to log in to create levels')
     
     name, published_id = db.session.execute(text("""
@@ -111,7 +111,7 @@ def play_level(id: int):
     level_id, name, published_at, user_id, publisher, plays, clears, reviews = result.fetchall()[0]
 
     user_has_review = False
-    if "user_id" in session:
+    if check_logged_in():
         user_has_review = db.session.execute(text("""
             SELECT COUNT(*)
             FROM Reviews

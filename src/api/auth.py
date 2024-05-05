@@ -2,8 +2,9 @@
 from flask import Blueprint, request, session
 from sqlalchemy import text
 from werkzeug.security import check_password_hash, generate_password_hash
-from models import make_error_response, Login
+from models import check_logged_in_mut, make_error_response, Login
 from models import db
+from secrets import token_hex
 
 auth_api = Blueprint('auth_api', __name__, template_folder='../templates')
 
@@ -24,6 +25,7 @@ def api_auth_create_account():
     session['user_id'] = user_id
     session['username'] = params.username
     session['user_icon'] = 'gradient'
+    session["csrf_token"] = token_hex(16)
 
     return {}, 200
 
@@ -48,13 +50,16 @@ def api_auth_login_user():
     session['user_id'] = user_id
     session['username'] = params.username
     session['user_icon'] = icon
+    session["csrf_token"] = token_hex(16)
 
     return {}, 200
 
 @auth_api.route("/api/auth/logout", methods=["POST"])
 def api_auth_logout_user():
-    if 'user_id' in session:
+    if check_logged_in_mut():
         del session['user_id']
         del session['username']
         del session['user_icon']
-    return {}, 200
+        del session["csrf_token"]
+        return {}, 200
+    return {}, 400

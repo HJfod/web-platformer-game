@@ -1,5 +1,7 @@
 // @ts-check
 
+import { api } from "./api.mjs";
+
 const OBJECT_UNIT = 32;
 
 /**
@@ -543,13 +545,12 @@ class PlayerObject extends GameObject {
         this.deletable = false;
 
         // Fetch selected player icon asynchronously
-        (async () => {
-            try {
-                const res = await fetch('/api/user/icon');
-                this.icon = /** @type {PlayerIcon} */ (await res.text());
+        api.get('/api/user/icon').then(res => {
+            if (res.ok) {
+                this.icon = /** @type {PlayerIcon} */ (res.value);
             }
-            catch {}
-        })();
+            console.log(res);
+        });
     }
 
     checkCollisions() {
@@ -1169,7 +1170,11 @@ class Level {
         const [ex, ey] = this.endOrig();
         this.goal = new GoalObject(this, ex, ey);
 
-        data.objects?.forEach(obj => this.createObject(obj.type, obj.x, obj.y));
+        data.objects?.forEach(obj => {
+            if (obj.type !== 'goal') {
+                this.createObject(obj.type, obj.x, obj.y);
+            }
+        });
     }
 
     reset() {
@@ -1186,7 +1191,7 @@ class Level {
         else {
             this.winning = true;
             this.canvas.parentElement?.querySelector('.overlay')?.classList.remove('hidden');
-            fetch(`/api/levels/${this.id}/mark-as-cleared`, { method: 'POST' });
+            api.post(`/api/levels/${this.id}/mark-as-cleared`);
         }
     }
 
@@ -1355,16 +1360,9 @@ class Level {
     async serverAction(action) {
         try {
             await this.saveToServer();
-            const res = await fetch(`/api/levels/wip/${this.id}/${action}`, {
-                method: 'POST',
-                body: JSON.stringify(this.data),
-                headers: {
-                    'Content-type': 'application/json; charset=UTF-8'
-                }
-            });
-            const msg = await res.json();
+            const res = await api.post(`/api/levels/wip/${this.id}/${action}`, this.data);
             if (!res.ok) {
-                throw msg.reason;
+                throw res.error;
             }
         }
         catch(e) {
@@ -1374,16 +1372,9 @@ class Level {
     async saveToServer() {
         try {
             this.updateData();
-            const res = await fetch(`/api/levels/wip/${this.id}/update-data`, {
-                method: 'POST',
-                body: JSON.stringify(this.data),
-                headers: {
-                    'Content-type': 'application/json; charset=UTF-8'
-                }
-            });
-            const msg = await res.json();
+            const res = await api.post(`/api/levels/wip/${this.id}/update-data`, this.data);
             if (!res.ok) {
-                throw msg.reason;
+                throw res.error;
             }
             this.editorHasUnsavedChanges = false;
             if (this.onEditorChange) {
@@ -1468,15 +1459,15 @@ class Level {
 export async function loadLevelByID(canvas, id) {
     const level = new Level(canvas, id, false);
 
-    const res = await fetch(`/api/levels/${id}/data`);
-    const data = /** @type {LevelData} */ (await res.json());
+    const res = await api.get(`/api/levels/${id}/data`);
     if (!res.ok) {
         level.setError('Level not found');
         return Promise.reject('Level not found');
     }
     else {
+        const data = /** @type {LevelData} */ (await res.value);
         level.loadData(data);
-        fetch(`/api/levels/${id}/mark-as-played`, { method: 'POST' });
+        api.post(`/api/levels/${id}/mark-as-played`);
         return level;
     }
 }
@@ -1490,13 +1481,13 @@ export async function loadLevelByID(canvas, id) {
 export async function loadEditorByID(canvas, id) {
     const level = new Level(canvas, id, true);
 
-    const res = await fetch(`/api/levels/wip/${id}/data`);
-    const data = /** @type {LevelData} */ (await res.json());
+    const res = await api.get(`/api/levels/wip/${id}/data`);
     if (!res.ok) {
         level.setError('Level not found');
         return Promise.reject('Level not found');
     }
     else {
+        const data = /** @type {LevelData} */ (await res.value);
         level.loadData(data);
         return level;
     }
