@@ -12,22 +12,16 @@
 
 Anyone can play maps without needing to log in. Users with an account can also create and publish their own maps, as well as rate the difficulty and review other people's maps.
 
+## :collision: Features
+
  * :chart_with_upwards_trend: Terrible physics engine
  * :fire: No original concepts
  * :rocket: Blazingly slow
  * :tada: Essentially zero fun gameplay features
- * :hourglass: Will be shut down fifty seconds after the course is complete
-
-## :watch: Status
-
- * [x] Account system
- * [x] Game engine
- * [x] Basic level editor
- * [x] Uploading & un-uploading levels
- * [x] Level reviews
- * [x] Player sprite & color customizability options
- * [x] Polish in-game graphics
- * [ ] Mobile support
+ * :older_woman: Flash-game-esque graphics
+ * :honeybee: Level editor
+ * :two_men_holding_hands: Account system
+ * :trollface: Review system
 
 ## :zap: Running a local copy
 
